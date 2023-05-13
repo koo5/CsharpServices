@@ -33,7 +33,10 @@ namespace LodgeiT
 
 
     // a mapping from field to Pos
-    using FieldMap = Dictionary<INode, Pos>;
+    public class FieldMap : Dictionary<INode, Pos>
+    {
+
+    }
 
 
     /*
@@ -103,7 +106,7 @@ namespace LodgeiT
     /// <summary>
     /// abstraction of excel cell coordinates
     /// </summary>
-    enum CellReadingResult
+    public enum CellReadingResult
     {
         Ok,
         Error,
@@ -139,7 +142,7 @@ namespace LodgeiT
         }
     }
 
-    class Pos
+    public class Pos
     {
         public int col = 'A';
         public int row = 1;
@@ -167,7 +170,7 @@ namespace LodgeiT
             return columnName;
         }
     }
-    class RdfSheetEntry
+    public class RdfSheetEntry
     {
         public Pos _pos;
         public INode _obj;
@@ -276,18 +279,13 @@ namespace LodgeiT
 
         public RdfTemplate(XLWorkbook app, string sheetsTemplateQName)
         {
-            RdfTemplate(app, u(sheetsTemplateQName));
-        }
-
-        public RdfTemplate(XLWorkbook app, Uri sheetsTemplateUri)
-        {
 #if !DEBUG
             try
             {
 #endif
             _app = app;
             Init();
-            _sheetsGroupTemplateUri = _g.CreateUriNode(sheetsTemplateUri);
+            _sheetsGroupTemplateUri = u(sheetsTemplateQName);
 #if !DEBUG
             }
             catch (Exception e)
@@ -328,7 +326,7 @@ namespace LodgeiT
         private void ErrMsg(string msg)
         {
             System.Console.WriteLine(msg);
-            MessageBox.Show(msg, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(msg, "LodgeiT", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 #else
         private void ErrMsg(string msg)
@@ -394,7 +392,7 @@ namespace LodgeiT
             }
             catch (Exception e)
             {
-                MessageBox.Show("while CreateSheetsFromExample(" + rdf_templates + "): " + e.Message, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ErrMsg("while CreateSheetsFromExample(" + rdf_templates + "): " + e.Message);
                 throw e;
             }
 #endif
@@ -425,7 +423,7 @@ namespace LodgeiT
                 {
                     if (sheet_instances.Count > 1)
                     {
-                        MessageBox.Show("only one sheet of type \"" + GetSheetNamePrefix(sheet_type) + "\" (" + sheet_type.ToString() + ") is allowed.", "LodgeIt");
+                        ErrMsg("only one sheet of type \"" + GetSheetNamePrefix(sheet_type) + "\" (" + sheet_type.ToString() + ") is allowed.");
                         return false;
                     }
                 }
@@ -459,8 +457,8 @@ namespace LodgeiT
                 INode sheet_type_uri = _g.CreateUriNode(new Uri(sheet_type_uri_string));
                 if (!known_sheets.Contains(sheet_type_uri))
                 {
-                    MessageBox.Show("unknown sheet type: " + sheet_type_uri_string + ", ignoring.", "LodgeIt");
-                    continue;
+                    ErrMsg("unknown sheet type: " + sheet_type_uri_string + ", ignoring.");
+                    return false;
                 }
                 INode record_instance = null;
                 INode sheet_template = GetObject(sheet_type_uri, u("excel:root"));
@@ -483,7 +481,7 @@ namespace LodgeiT
                 if (extracted_instances_by_sheet_type.ContainsKey(known_sheet))
                     continue;
                 string msg = "sheet \"" + GetSheetNamePrefix(known_sheet) + "\" (" + known_sheet.ToString() + ") not found.";
-                MessageBox.Show(msg, "LodgeIt");
+                ErrMsg(msg);
                 return false;
             }
             return true;
@@ -673,7 +671,7 @@ namespace LodgeiT
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(field.ToString() + " excel:template: " + ex.Message, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        ErrMsg(field.ToString() + " excel:template: " + ex.Message);
                         throw ex;
                     }
                     if (!ExtractRecordByTemplate(field_template, ref obj))
@@ -702,7 +700,7 @@ namespace LodgeiT
                     String msg = "no values detected in template " + GetTitle(template) + ". Expected:\n";
                     foreach (KeyValuePair<INode, Pos> mapping in cell_positions)
                         msg += FieldTitles(mapping.Key).First() + " at " + mapping.Value.Cell + "\n";
-                    MessageBox.Show(msg, "Lodge iT");
+                    ErrMsg(msg);
                 }
                 return false;
             }
@@ -736,7 +734,7 @@ namespace LodgeiT
                     values[GetPropertyUri(field)] = new RdfSheetEntry(AssertValue(_rg, obj), pos);
                 else if (!BoolObjectWithDefault(field, u("excel:optional"), true))
                 {
-                    MessageBox.Show("missing required field in " + _sheet.Name + " at " + pos.Cell);
+                    ErrMsg("missing required field in " + _sheet.Name + " at " + pos.Cell);
                     return false;
                 }
             }
@@ -768,7 +766,7 @@ namespace LodgeiT
                 /*else
                     if (CellStringContents(pos) != "")
                     {
-                        MessageBox.Show("error reading date in \"" + _sheet.Name + "\" at " + pos.Cell);
+                        ErrMsg("error reading date in \"" + _sheet.Name + "\" at " + pos.Cell);
                         return false;
                     }*/
                 else
@@ -804,7 +802,7 @@ namespace LodgeiT
             Range rng = _sheet.get_Range(pos.Cell, pos.Cell);
             if (rng.Value2 is Int32)
             {
-                MessageBox.Show("error in " + _sheet.Name + " " + pos.Cell);
+                ErrMsg("error in " + _sheet.Name + " " + pos.Cell);
                 return CellReadingResult.Error;
             }
             string sValue = null;
@@ -847,7 +845,7 @@ namespace LodgeiT
             {
                 if (!int.TryParse(sValue, out result))
                 {
-                    MessageBox.Show("error reading integer in " + _sheet.Name + " at " + pos.Cell);
+                    ErrMsg("error reading integer in " + _sheet.Name + " at " + pos.Cell);
                     return false;
                 }
             }
@@ -879,14 +877,14 @@ namespace LodgeiT
                 }
                 catch (System.FormatException e)
                 {
-                    MessageBox.Show("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + sValue + "\", error: " + e.Message);
+                    ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + sValue + "\", error: " + e.Message);
                     throw new RdfTemplateInputError();
                 }
             }
 
             if (!decimal.TryParse(sValue, out result))
             {
-                MessageBox.Show("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + sValue + "\"");
+                ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + sValue + "\"");
                 throw new RdfTemplateInputError();
             }
             obj = result.ToLiteral(_g);
@@ -898,7 +896,7 @@ namespace LodgeiT
             Range rng = _sheet.get_Range(pos.Cell, pos.Cell);
             if (rng.Value2 is Int32)
             {
-                MessageBox.Show("error in " + _sheet.Name + " " + pos.Cell);
+                ErrMsg("error in " + _sheet.Name + " " + pos.Cell);
                 return CellReadingResult.Error;
             }
             string sValue = null;
@@ -955,7 +953,7 @@ namespace LodgeiT
             catch (VDS.RDF.RdfException)
             {
                 string msg = "invalid URI: " + contents;
-                MessageBox.Show(msg, "LodgeIT");
+                ErrMsg(msg);
                 throw;
             }
         }
@@ -1048,7 +1046,7 @@ namespace LodgeiT
                 foreach (string i in expected_header_items)
                     msg += i + ", ";
                 msg += "starting from " + pos.Cell;
-                MessageBox.Show(msg, "LodgeIT");
+                ErrMsg(msg);
                 return false;
             }
             return true;
@@ -1317,7 +1315,6 @@ namespace LodgeiT
         {
             return GetObjects(subject, u(predicate));
         }
-#endif
         protected IUriNode u(string uri)
         {
             return u(_g, uri);
@@ -1410,7 +1407,7 @@ namespace LodgeiT
         {
             if (!isMulti && SheetByName(sheet_name) != null)
             {
-                MessageBox.Show("sheet with that name already exists: " + sheet_name, "Lodge iT");
+                ErrMsg("sheet with that name already exists: " + sheet_name);
                 return null;
             }
             Worksheet worksheet = _app.Sheets.Add();
@@ -1505,7 +1502,7 @@ namespace LodgeiT
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error: " + ex.Message, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ErrMsg("Error: " + ex.Message);
                 throw ex;
             }
 #endif
@@ -1535,7 +1532,7 @@ namespace LodgeiT
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error: " + ex.Message, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ErrMsg("Error: " + ex.Message);
                 throw ex;
             }
 #endif
@@ -1573,15 +1570,6 @@ namespace LodgeiT
             return ((IUriNode)uri).Uri.Fragment.Substring(1);
         }
     }
-
-#if !VSTO
-    public void Xlsx2rdf(string input_fn)
-    {
-
-
-    }
-
-#endif
 
 }
 

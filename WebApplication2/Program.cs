@@ -20,14 +20,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapPost("/xlsx2rdf", ([FromBody] string input_fn, string root) =>
+app.MapPost("/xlsx2rdf", async (string root, [FromBody] string input_fn) =>
 {
     string output_fn = input_fn + ".rdf";
     RdfTemplate t = new RdfTemplate(new XLWorkbook(input_fn), root);
     if (!t.ExtractSheetGroupData(""))
-        return { "error:":t.alerts};
+        return new { Error = t.alerts};
     t.SerializeToFile(output_fn);  
-    return { "result": "ok"};
+    return new { Result = "ok"};
 })
 .WithName("xlsx2rdf")
 .WithOpenApi();
