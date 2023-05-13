@@ -9,12 +9,15 @@ namespace CsharpServices.Test
         public void Test1()
         {
 
+            string root = "";
             var wb = new XLWorkbook("C:/test.xlsx");
-            var t = new RdfTemplate(wb, );
-            t.ExtractSheetGroupData()
-
-            t.test11();
-            //Assert.False(result, "1 should not be prime");
+            RdfTemplate t = new RdfTemplate(wb, root);
+            if (!t.ExtractSheetGroupData(""))
+            {
+                throw new Exception(t.alerts);
+                //Assert.False(result, "1 should not be prime");
+            }
+            string rdfStr = t.Serialize();            
         }
     }
 }

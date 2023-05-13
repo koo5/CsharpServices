@@ -10,6 +10,7 @@ using VDS.RDF.Parsing;
 using VDS.RDF.Writing;
 using VDS.RDF.Nodes;
 using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Presentation;
 #if VSTO
 using System.Windows.Forms;
 using Microsoft.Office.Interop.Excel;
@@ -322,26 +323,22 @@ namespace LodgeiT
             _rg.BaseUri = uu("l:request_graph");
         }
 
-#if !VSTO
-        public void test11()
-        {
+#if VSTO
 
-            var wb = new XLWorkbook("C:/test.xlsx");
-            var s = wb.Worksheet("xxx");
-            s.Cell(1, "A").Value
-        }
-        private void ErrMsg(string msg)
-        {
-            System.Console.WriteLine(msg);
-            alerts += msg + "\n";
-        }
-#endif
         private void ErrMsg(string msg)
         {
             System.Console.WriteLine(msg);
             MessageBox.Show(msg, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+#else
+        private void ErrMsg(string msg)
+        {
+            System.Console.WriteLine(msg);
+            alerts += msg + "\n";
+        }
 
+
+#endif
 
 #if VSTO
 
@@ -1577,8 +1574,15 @@ namespace LodgeiT
         }
     }
 
+#if !VSTO
+    public void Xlsx2rdf(string input_fn)
+    {
+
 
     }
+
+#endif
+
 }
 
 
@@ -1588,3 +1592,5 @@ namespace LodgeiT
     todo: what if a column is present twice?
 
 */
+/*var s = wb.Worksheet("xxx");
+s.Cell(1, "A").Value*/
