@@ -20,17 +20,49 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapPost("/xlsx2rdf", async (string root, [FromBody] string input_fn) =>
+
+
+
+app.MapPost("/xlsx2rdf", (string root, /*[FromBody] */string input_fn) =>
 {
     string output_fn = input_fn + ".rdf";
     RdfTemplate t = new RdfTemplate(new XLWorkbook(input_fn), root);
     if (!t.ExtractSheetGroupData(""))
-        return new { Error = t.alerts};
-    t.SerializeToFile(output_fn);  
-    return new { Result = "ok"};
+        return new RpcReply (null, t.alerts );
+    t.SerializeToFile(output_fn);
+    return new RpcReply ("ok",null );
+    
 })
 .WithName("xlsx2rdf")
 .WithOpenApi();
 
 
+app.MapGet("/weatherforecast", () =>
+{
+    var forecast = Enumerable.Range(1, 5).Select(index =>
+        new WeatherForecast
+        (
+            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+            Random.Shared.Next(-20, 55),
+            "555"
+        ))
+        .ToArray();
+    return forecast;
+})
+.WithName("GetWeatherForecast")
+.WithOpenApi();
+
+
+
 app.Run();
+
+
+
+internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+internal record RpcReply(string? result, string? error)
+{
+}
+

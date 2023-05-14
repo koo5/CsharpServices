@@ -438,14 +438,14 @@ namespace LodgeiT
             }
 
             Assert(_rg, u(_rg, ":request"), u(_rg, "excel:has_sheet_instances"), _rg.AssertList(all_request_sheets));
-            Assert(_g, u(":request"), u("l:client_version"), _g.CreateLiteralNode("2"));
-            Assert(_g, u(":request"), u("l:client_git_info"), _g.CreateLiteralNode(Properties.Resources.ResourceManager.GetObject("repo_status").ToString().Replace("\n", Environment.NewLine)));
+            Assert(_g, u(":request"), u("l:has_client_version"), _g.CreateLiteralNode("3"));
+            //Assert(_g, u(":request"), u("l:client_git_info"), _g.CreateLiteralNode(Properties.Resources.ResourceManager.GetObject("repo_status").ToString().Replace("\n", Environment.NewLine)));
             return true;
         }
 
         private bool ExtractDataInstances(IEnumerable<INode> known_sheets, ref Dictionary<INode, IList<SheetInstanceData>> extracted_instances_by_sheet_type)
         {
-            foreach (Excel.Worksheet sheet in _app.Worksheets)
+            foreach (/*Excel.Worksheet*/var sheet in _app.Worksheets)
             {
                 _sheet = sheet;
 
@@ -514,7 +514,7 @@ namespace LodgeiT
             }
             return n.First().AsValuedNode().AsString();
         }
-
+#if VSTO
         public void LoadRequestSheets(StreamReader data)
         {
             /* todo. 
@@ -555,7 +555,7 @@ namespace LodgeiT
                 _sheet.Columns.AutoFit();
             }
         }
-
+#endif
         public string SanitizeSheetName(string old)
         {
             // https://stackoverflow.com/questions/451452/valid-characters-for-excel-sheet-names/451488
@@ -576,14 +576,14 @@ namespace LodgeiT
             }
             return safeName;
         }
-
+#if VSTO
         public void WriteFirstRow(INode sheet_decl)
         {
             WriteString(new Pos { col = 'A', row = 1 }, "sheet type:");
             //_sheet.Range["A1"].AddComment("blablabl\nablablabla");
             WriteString(new Pos { col = 'B', row = 1 }, sheet_decl.ToString());
         }
-
+#endif
         public bool ExtractRecordByTemplate(INode template, ref INode individual)
         {
             var map = new FieldMap();
@@ -760,7 +760,11 @@ namespace LodgeiT
             }
             else if (type.Equals(u("xsd:dateTime")))
             {
+#if VSTO
                 DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
+#else
+                DateTime contents = DateTime.FromFileTimeUtc(123);
+#endif
                 if (contents != DateTime.MinValue)
                     obj = contents.Date.ToLiteral(_g);
                 /*else
@@ -864,9 +868,13 @@ namespace LodgeiT
             if (sValue == "")
                 return true;
 
-            Excel.Range rng = _sheet.get_Range(pos.Cell, pos.Cell);
+#if VSTO
+            Excel.Range rng = _sheet.Range[pos.Cell, pos.Cell];
+#else
+            var rng = _sheet.Cell(pos.Cell);
+#endif
             decimal result = 0;
-
+#if VSTO
             if (rng.Value != null)
             {
                 try
@@ -887,12 +895,14 @@ namespace LodgeiT
                 ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + sValue + "\"");
                 throw new RdfTemplateInputError();
             }
+#endif
             obj = result.ToLiteral(_g);
             return true;
         }
 
         public CellReadingResult GetCellValueAsString(Pos pos, ref string result)
         {
+#if VSTO
             Range rng = _sheet.get_Range(pos.Cell, pos.Cell);
             if (rng.Value2 is Int32)
             {
@@ -911,11 +921,30 @@ namespace LodgeiT
                 return CellReadingResult.Empty;
             result = sValue/**.Trim('$')*/;
             return CellReadingResult.Ok;
+#else
+            try
+            {
+                if (_sheet.Cell(pos.Cell).TryGetValue(out result))
+                    return CellReadingResult.Ok;
+                else
+                {
+                    ErrMsg("error in " + _sheet.Name + " " + pos.Cell);
+                    return CellReadingResult.Error;
+                }
+            }
+            catch (InvalidCastException e)
+            {
+                ErrMsg("error in " + _sheet.Name + " " + pos.Cell);
+                return CellReadingResult.Error;
+            }
+#endif
         }
 
         public void Assert(IGraph g, INode s, INode p, INode o)
         {
-            g.Assert(new Triple(Tools.CopyNode(s, g), Tools.CopyNode(p, g), Tools.CopyNode(o, g)));
+            /*dotnetrdf 3.0 breaking change, nodes are no longer specific to individual graphs. Can we upgrade to 3.0? */
+            //g.Assert(new Triple(Tools.CopyNode(s, g), Tools.CopyNode(p, g), Tools.CopyNode(o, g)));
+            g.Assert(new Triple(s, p, o));
         }
         public INode AssertValue(IGraph g, INode obj)
         {
@@ -1052,6 +1081,7 @@ namespace LodgeiT
             return true;
         }
 
+#if VSTO
         void WriteData(INode template, INode doc)
         {
             var pos = GetPos(template);
@@ -1128,6 +1158,7 @@ namespace LodgeiT
                 labels.Add(GetLabels(option).First());
             return string.Join(",", labels);
         }
+
         void PopulateData(Pos pos, INode template, INode doc)
         {
             foreach (var field in GetFields(template))
@@ -1242,7 +1273,7 @@ namespace LodgeiT
 
             }
         }
-
+#endif
         protected Pos GetPos(INode subject)
         {
             var uri = MaybeGetObject(subject, u("excel:position"));
@@ -1374,7 +1405,12 @@ namespace LodgeiT
         }
         protected string GetCellValue(Pos pos)
         {
+#if VSTO
             return ExporttoXMLBase.GetCellValue(_sheet, pos.Cell);
+#else
+            // uhhh, figure out what GetCellValue does, exactly
+            return _sheet.Cell(pos.Cell).GetString();
+#endif
         }
 
         protected IEnumerable<string> FieldTitles(INode field)
