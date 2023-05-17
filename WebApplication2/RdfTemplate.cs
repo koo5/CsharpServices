@@ -1560,7 +1560,7 @@ namespace LodgeiT
 #if VSTO
                 reader = new StreamReader(new MemoryStream((byte[])Properties.Resources.ResourceManager.GetObject("RdfTemplates")));
 #else
-                reader = new StreamReader(File.OpenRead(Environment.GetEnvironmentVariable("RDF_TEMPLATES_N3")));
+                reader = new StreamReader(File.OpenRead(Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR") + "/RdfTemplates.n3"));
 #endif
 #endif
             LoadRdf(reader);
