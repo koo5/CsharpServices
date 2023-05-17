@@ -1,4 +1,4 @@
-develop
+## develop
 
 ## windows 10
 ### Visual Studio 2022 Community edition
@@ -12,6 +12,13 @@ snap dotnet sdk segfaults, use https://learn.microsoft.com/en-us/dotnet/core/ins
 sudo apt install dotnet-sdk-7.0
 dotnet build RdfTemplate.Test/CsharpServices.Test.csproj
 ```
+
+```
+CSHARPSERVICES_DATADIR=(realpath ./data) dotnet test
+```
+
+
+
 
 
 
