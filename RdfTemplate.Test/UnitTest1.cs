@@ -1,10 +1,16 @@
 using ClosedXML.Excel;
 using LodgeiT;
+using Xunit.Abstractions;
 
 namespace CsharpServices.Test
 {
 	public class UnitTest1
 	{
+	    private readonly ITestOutputHelper _t;
+		public UnitTest1(ITestOutputHelper testOutputHelper)
+		{
+			_t = testOutputHelper;
+		}
 		[Fact]
 		public void Test1()
 		{
@@ -20,8 +26,42 @@ namespace CsharpServices.Test
 			string? datapath = Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR");
 			if (datapath != null)
 				Environment.CurrentDirectory = datapath;
+			else
+				Environment.CurrentDirectory =  Path.GetFullPath("../../../../data");
+
 			string path = Directory.GetCurrentDirectory();
-			Console.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			_t.WriteLine("The current directory is {0}", path);
+			
 			var wb = new XLWorkbook("empty IC template.xlsx");
 
 			RdfTemplate t = new RdfTemplate(wb, root);
