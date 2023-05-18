@@ -31,40 +31,12 @@ namespace CsharpServices.Test
 
 			string path = Directory.GetCurrentDirectory();
 			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
-			_t.WriteLine("The current directory is {0}", path);
 			
 			var wb = new XLWorkbook("empty IC template.xlsx");
 
 			RdfTemplate t = new RdfTemplate(wb, root);
+			t._t = _t;
+			t._
 			if (!t.ExtractSheetGroupData(""))
 			{
 				throw new Exception(t.alerts);

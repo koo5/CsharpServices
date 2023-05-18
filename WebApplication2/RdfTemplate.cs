@@ -224,6 +224,8 @@ namespace LodgeiT
         public string alerts;
 #endif
 
+        public ITestOutputHelper _t;
+        
         private readonly bool _isFreshSheet = true;
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
         protected Graph _g;
@@ -335,7 +337,11 @@ namespace LodgeiT
             alerts += msg + "\n";
         }
 
-
+        private void wl(string s)
+        {
+            _t.WriteLine(s);
+        }
+        
 #endif
 
 #if VSTO
@@ -400,6 +406,7 @@ namespace LodgeiT
 #endif
         private bool CreateRdfEndpointRequestFromSheetGroupData()
         {
+            C c = push("CreateRdfEndpointRequestFromSheetGroupData");
             IEnumerable<INode> known_sheets = GetListItems(_sheetsGroupTemplateUri, "excel:sheets");
             var extracted_instances_by_sheet_type = new Dictionary<INode, IList<SheetInstanceData>>();
             if (!ExtractDataInstances(known_sheets, ref extracted_instances_by_sheet_type))
@@ -408,6 +415,7 @@ namespace LodgeiT
                 return false;
             if (!AssertRequest(extracted_instances_by_sheet_type))
                 return false;
+            pop(c);
             return true;
         }
 
@@ -488,6 +496,8 @@ namespace LodgeiT
         }
         public bool ExtractSheetGroupData(string UpdatedRdfTemplates = "")
         {
+            C c = push("ExtractSheetGroupData");
+            
             LoadTemplates(UpdatedRdfTemplates);
             try
             {
@@ -497,6 +507,8 @@ namespace LodgeiT
             {
                 return false;
             }
+
+            pop(c);
         }
 
         private bool GetMultipleSheetsAllowed(INode sheet_decl)
@@ -1545,12 +1557,14 @@ namespace LodgeiT
         }
         protected void LoadTemplates(string UpdatedRdfTemplates)
         {
+            C c = push("LoadTemplates");
+
 #if !DEBUG
             try
             {
 #endif
             StreamReader reader;
-            if (UpdatedRdfTemplates != null)
+            if (UpdatedRdfTemplates != null && UpdatedRdfTemplates != "")
                 /*these live-updated templates is probably the only source we should support */
                 reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(UpdatedRdfTemplates)));
             else
@@ -1560,7 +1574,7 @@ namespace LodgeiT
 #if VSTO
                 reader = new StreamReader(new MemoryStream((byte[])Properties.Resources.ResourceManager.GetObject("RdfTemplates")));
 #else
-                reader = new StreamReader(File.OpenRead(Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR") + "/RdfTemplates.n3"));
+                reader = new StreamReader(File.OpenRead(/*Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR") + "/" +  */ "RdfTemplates.n3"));
 #endif
 #endif
             LoadRdf(reader);
@@ -1572,6 +1586,7 @@ namespace LodgeiT
                 throw ex;
             }
 #endif
+            pop(c);
         }
 #if VSTO
         protected Worksheet SheetByName(string name)
