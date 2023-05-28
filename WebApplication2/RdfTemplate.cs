@@ -11,6 +11,7 @@ using VDS.RDF.Writing;
 using VDS.RDF.Nodes;
 using ClosedXML.Excel;
 using DocumentFormat.OpenXml.Presentation;
+using Lucene.Net.Diagnostics;
 #if VSTO
 using System.Windows.Forms;
 using Microsoft.Office.Interop.Excel;
@@ -30,6 +31,7 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 namespace LodgeiT
 {
+    public delegate void WriteLine(string line);
 
 
     // a mapping from field to Pos
@@ -40,13 +42,15 @@ namespace LodgeiT
     /*
     execution context, used for obtaining useful error messages
     */
-    class C
+    public class C
     {
         public WeakReference<C> parent;
         public static C root;
         public static C current_context;
         public string value;
         public List<C> items = new List<C>();
+        public static WriteLine _t;
+
 
         public C(string value)
         {
@@ -74,13 +78,15 @@ namespace LodgeiT
 
         public void pop()
         {
+            _t("done" + value);
             if (this == root)
                 root = null;
             else
             {
                 C c;
-                if (parent.TryGetTarget(out c))
-                    c.items.Remove(this);
+                bool GotParent = parent.TryGetTarget(out c);
+                Debug.Assert(GotParent);
+                c.items.Remove(this);
             }
         }
     }
@@ -163,36 +169,14 @@ namespace LodgeiT
             _obj = obj;
         }
     }
+
     public class RdfTemplateError : Exception
     {
         public RdfTemplateError(string message = "") : base(message)
         {
         }
     }
-
-
-
-
-
-
-    /// <summary>
-    /// Represents a class which can be used to provide test output.
-    /// </summary>
-    public interface IOutputHelper
-    {
-        /// <summary>Adds a line of text to the output.</summary>
-        /// <param name="message">The message</param>
-        void WriteLine(string message);
-
-        /// <summary>Formats a line of text and adds it to the output.</summary>
-        /// <param name="format">The message format</param>
-        /// <param name="args">The format arguments</param>
-        void WriteLine(string format, params object[] args);
-    }
-
-
-
-
+    
     /// <summary>
     /// schema-directed UI.
     /// In future, we should probably align the templating structure with http://datashapes.org/forms.html, possibly through inferencing one from the other.
@@ -217,7 +201,6 @@ namespace LodgeiT
         public string alerts;
 #endif
 
-        public delegate void WriteLine(string line);
 
         public WriteLine _t;
         
@@ -328,7 +311,7 @@ namespace LodgeiT
 #else
         private void ErrMsg(string msg)
         {
-            System.Console.WriteLine(msg);
+            _t(msg);
             alerts += msg + "\n";
         }
 
@@ -403,10 +386,19 @@ namespace LodgeiT
         
         private C push(string value)
         {
+            _t(value + "...");
+
             C c = new C(value);
             c.parent = new WeakReference<C>(C.current_context);
             if (C.current_context != null)
                 C.current_context.items.Add(c);
+            else
+            {
+                C.current_context = c;
+                Debug.Assert(C.root == null);
+                C.root = c;
+            }
+
             return c;
         }
     

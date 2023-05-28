@@ -14,7 +14,17 @@ namespace CsharpServices.Test
 		[Fact]
 		public void Test1()
 		{
-
+			_t.WriteLine("hello");
+			Thread.Sleep(1000);
+			_t.WriteLine("hello");
+			Thread.Sleep(1000);
+			_t.WriteLine("hello");
+			Thread.Sleep(1000);
+			_t.WriteLine("hello");
+			Thread.Sleep(300);
+			_t.WriteLine("hello");
+			Thread.Sleep(300);
+			_t.WriteLine("hello");
 			string root = "ic_ui:investment_calculator_sheets";
 
 			LoadOptions.DefaultGraphicEngine = new ClosedXML.Graphics.DefaultGraphicEngine("Noto Serif");
@@ -36,6 +46,7 @@ namespace CsharpServices.Test
 
 			RdfTemplate t = new RdfTemplate(wb, root);
 			t._t = _t.WriteLine;
+			LodgeiT.C._t = _t.WriteLine;
 			if (!t.ExtractSheetGroupData(""))
 			{
 				throw new Exception(t.alerts);
