@@ -35,73 +35,51 @@ namespace LodgeiT
     // a mapping from field to Pos
     public class FieldMap : Dictionary<INode, Pos>
     {
-
     }
 
-
     /*
-    query / execution context, used for obtaining useful error messages
+    execution context, used for obtaining useful error messages
     */
-
-    class CtxItem
+    class C
     {
+        public C parent;
+        public static C root;
+        public static C current_context;
         public string value;
-        public CtxItem(string value)
+        public List<C> items = new List<C>();
+
+        public C(string value)
         {
             this.value = value;
         }
-    }
 
-    class GlobalCtx
-    {
-        public static List<CtxItem> items = new List<CtxItem>();
-        public static CtxItem Add(string item)
+        public void SetCurrent(C c)
         {
-            var i = new CtxItem(item);
-            items.Add(i);
-            return i;
+            current_context = c;
         }
-        public static string PrettyString()
+
+        public string PrettyString(int indent = 0)
         {
-            string result = "";
+            string result = String.Concat(Enumerable.Repeat("--", indent)) + value;
+            if (items.Count > 0)
+                result += ":";
+            result += "\n";
             foreach (var i in items)
             {
-                result += i.value + "\n";
+                result += i.PrettyString(indent + 2);
             }
+
             return result;
         }
-    }
 
-    class Ctx
-    {
-        List<CtxItem> local_items = new List<CtxItem>();
-        public Ctx(string description)
-        {
-            add(description);
-        }
-        public Ctx(string format, params object[] args)
-        {
-            add(String.Format(format, args));
-        }
-        public void add(string context)
-        {
-            local_items.Add(GlobalCtx.Add(context));
-        }
-        public void add(string format, params object[] args)
-        {
-            add(String.Format(format, args));
-        }
         public void pop()
         {
-            var i = local_items.Last();
-            if (i != GlobalCtx.items.Last())
-                throw new Exception("execution context stack mismatch, this shouldn't happen");
-            local_items.Remove(i);
-            GlobalCtx.items.Remove(i);
+            if (this == root)
+                root = null;
+            else
+                parent.items.Remove(this);
         }
     }
-
-
 
     /// <summary>
     /// abstraction of excel cell coordinates
@@ -181,9 +159,9 @@ namespace LodgeiT
             _obj = obj;
         }
     }
-    public class RdfTemplateInputError : Exception
+    public class RdfTemplateError : Exception
     {
-        public RdfTemplateInputError(string message = "") : base(message)
+        public RdfTemplateError(string message = "") : base(message)
         {
         }
     }
@@ -193,9 +171,20 @@ namespace LodgeiT
 
 
 
+    /// <summary>
+    /// Represents a class which can be used to provide test output.
+    /// </summary>
+    public interface IOutputHelper
+    {
+        /// <summary>Adds a line of text to the output.</summary>
+        /// <param name="message">The message</param>
+        void WriteLine(string message);
 
-
-
+        /// <summary>Formats a line of text and adds it to the output.</summary>
+        /// <param name="format">The message format</param>
+        /// <param name="args">The format arguments</param>
+        void WriteLine(string format, params object[] args);
+    }
 
 
 
@@ -224,7 +213,7 @@ namespace LodgeiT
         public string alerts;
 #endif
 
-        public ITestOutputHelper _t;
+        public IOutputHelper _t;
         
         private readonly bool _isFreshSheet = true;
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
@@ -404,9 +393,24 @@ namespace LodgeiT
 #endif
         }
 #endif
+        
+        
+        private C push(string value)
+        {
+            C c = new C(value);
+            C.current_context.items.Add(c);
+            return c;
+        }
+    
+        private C push(string format, params object[] args)
+        {
+            return push(String.Format(format, args));
+        }
+
+        
         private bool CreateRdfEndpointRequestFromSheetGroupData()
         {
-            C c = push("CreateRdfEndpointRequestFromSheetGroupData");
+            C c = push("find worksheets relevant for {0} and generate structured data", _sheetsGroupTemplateUri);
             IEnumerable<INode> known_sheets = GetListItems(_sheetsGroupTemplateUri, "excel:sheets");
             var extracted_instances_by_sheet_type = new Dictionary<INode, IList<SheetInstanceData>>();
             if (!ExtractDataInstances(known_sheets, ref extracted_instances_by_sheet_type))
@@ -415,7 +419,7 @@ namespace LodgeiT
                 return false;
             if (!AssertRequest(extracted_instances_by_sheet_type))
                 return false;
-            pop(c);
+            c.pop();
             return true;
         }
 
@@ -496,21 +500,33 @@ namespace LodgeiT
         }
         public bool ExtractSheetGroupData(string UpdatedRdfTemplates = "")
         {
-            C c = push("ExtractSheetGroupData");
+            C c = push("load data description and extract worksheet data");
             
-            LoadTemplates(UpdatedRdfTemplates);
             try
             {
+                
+                LoadTemplates(UpdatedRdfTemplates);
                 return this.CreateRdfEndpointRequestFromSheetGroupData();
             }
-            catch (RdfTemplateInputError)
+            catch (RdfTemplateError e)
             {
+                FailReturn(e);
                 return false;
             }
 
-            pop(c);
+            c.pop();
         }
 
+        private void FailReturn(RdfTemplateError e)
+        {
+            PopulateAlertsFromTrace(e);
+        }
+
+        private void PopulateAlertsFromTrace(RdfTemplateError e)
+        {
+            alerts = "during:\n" + C.root.PrettyString() + "\nerror:\n" + e.Message;
+        }
+        
         private bool GetMultipleSheetsAllowed(INode sheet_decl)
         {
             return BoolObjectWithDefault(sheet_decl, u("excel:multiple_sheets_allowed"), false);
@@ -1586,7 +1602,7 @@ namespace LodgeiT
                 throw ex;
             }
 #endif
-            pop(c);
+            c.pop();
         }
 #if VSTO
         protected Worksheet SheetByName(string name)
