@@ -35,8 +35,7 @@ namespace CsharpServices.Test
 			var wb = new XLWorkbook("empty IC template.xlsx");
 
 			RdfTemplate t = new RdfTemplate(wb, root);
-			t._t = _t;
-			t._
+			t._t = _t.WriteLine;
 			if (!t.ExtractSheetGroupData(""))
 			{
 				throw new Exception(t.alerts);

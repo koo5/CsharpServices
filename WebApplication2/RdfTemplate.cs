@@ -42,7 +42,7 @@ namespace LodgeiT
     */
     class C
     {
-        public C parent;
+        public WeakReference<C> parent;
         public static C root;
         public static C current_context;
         public string value;
@@ -77,7 +77,11 @@ namespace LodgeiT
             if (this == root)
                 root = null;
             else
-                parent.items.Remove(this);
+            {
+                C c;
+                if (parent.TryGetTarget(out c))
+                    c.items.Remove(this);
+            }
         }
     }
 
@@ -213,7 +217,9 @@ namespace LodgeiT
         public string alerts;
 #endif
 
-        public IOutputHelper _t;
+        public delegate void WriteLine(string line);
+
+        public WriteLine _t;
         
         private readonly bool _isFreshSheet = true;
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
@@ -328,7 +334,7 @@ namespace LodgeiT
 
         private void wl(string s)
         {
-            _t.WriteLine(s);
+            _t(s);
         }
         
 #endif
@@ -398,7 +404,9 @@ namespace LodgeiT
         private C push(string value)
         {
             C c = new C(value);
-            C.current_context.items.Add(c);
+            c.parent = new WeakReference<C>(C.current_context);
+            if (C.current_context != null)
+                C.current_context.items.Add(c);
             return c;
         }
     
