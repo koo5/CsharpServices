@@ -1,0 +1,1 @@
+dotnet test -parallel none --nologo  --logger "console;verbosity=detailed"  --blame-hang-timeout 100s
