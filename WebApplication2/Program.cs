@@ -20,7 +20,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-
+RdfTemplate.tw = Console.Out;
 
 /* called by frontend. returns either result or error. error is a text with newlines, possibly including a rendering
  of a user-centric backtrace given by t.alerts */

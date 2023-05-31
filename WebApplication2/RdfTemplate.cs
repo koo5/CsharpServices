@@ -32,6 +32,7 @@ using Excel = Microsoft.Office.Interop.Excel;
 namespace LodgeiT
 {
     public delegate void WriteLine(string line);
+    //public delegate void WriteLine(string line);
 
 
     // a mapping from field to Pos
@@ -49,7 +50,7 @@ namespace LodgeiT
         public static C current_context;
         public string value;
         public List<C> items = new List<C>();
-        public static WriteLine _t;
+        public static TextWriter tw;
 
 
         public C(string value)
@@ -78,7 +79,7 @@ namespace LodgeiT
 
         public void pop()
         {
-            _t("done" + value);
+            tw.WriteLine("done" + value);
             if (this == root)
                 root = null;
             else
@@ -90,6 +91,7 @@ namespace LodgeiT
             }
         }
     }
+    
 
     /// <summary>
     /// abstraction of excel cell coordinates
@@ -202,8 +204,7 @@ namespace LodgeiT
 #endif
 
 
-        public WriteLine _t;
-        
+        public static TextWriter tw;
         private readonly bool _isFreshSheet = true;
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
         protected Graph _g;
@@ -259,21 +260,9 @@ namespace LodgeiT
 
         public RdfTemplate(XLWorkbook app, string sheetsTemplateQName)
         {
-#if !DEBUG
-            try
-            {
-#endif
             _app = app;
             Init();
             _sheetsGroupTemplateUri = u(sheetsTemplateQName);
-#if !DEBUG
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show("while initializing RdfTemplate(" + sheetsTemplateUri.ToString() + "): " + e.Message, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                throw e;
-            }
-#endif
         }
 
 #endif
@@ -311,13 +300,13 @@ namespace LodgeiT
 #else
         private void ErrMsg(string msg)
         {
-            _t(msg);
+            tw.WriteLine(msg);
             alerts += msg + "\n";
         }
 
         private void wl(string s)
         {
-            _t(s);
+            tw.WriteLine(s);
         }
         
 #endif
@@ -386,7 +375,7 @@ namespace LodgeiT
         
         private C push(string value)
         {
-            _t(value + "...");
+            tw.WriteLine(value + "...");
 
             C c = new C(value);
             c.parent = new WeakReference<C>(C.current_context);

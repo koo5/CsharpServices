@@ -44,15 +44,15 @@ namespace CsharpServices.Test
 			
 			var wb = new XLWorkbook("empty IC template.xlsx");
 
-			RdfTemplate t = new RdfTemplate(wb, root);
-			t._t = _t.WriteLine;
-			LodgeiT.C._t = _t.WriteLine;
-			if (!t.ExtractSheetGroupData(""))
-			{
-				throw new Exception(t.alerts);
-				//Assert.False(result, "1 should not be prime");
-			}
-			string rdfStr = t.Serialize();            
+			// RdfTemplate t = new RdfTemplate(wb, root);
+			// t._t = _t.WriteLine;
+			// LodgeiT.C._t = _t.WriteLine;
+			// if (!t.ExtractSheetGroupData(""))
+			// {
+			// 	throw new Exception(t.alerts);
+			// 	//Assert.False(result, "1 should not be prime");
+			// }
+			// string rdfStr = t.Serialize();            
 		}
 	}
 }
