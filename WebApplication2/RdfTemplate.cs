@@ -1,10 +1,12 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using VDS.RDF.Writing;
@@ -31,13 +33,14 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 namespace LodgeiT
 {
-    public delegate void WriteLine(string line);
-    //public delegate void WriteLine(string line);
-
 
     // a mapping from field to Pos
     public class FieldMap : Dictionary<INode, Pos>
     {
+        public string ToString()
+        {
+            return String.Join(", ", this.Select(kv => kv.Key.ToString() + " -> " + kv.Value.ToString())); 
+        }
     }
 
     /*
@@ -56,6 +59,17 @@ namespace LodgeiT
         public C(string value)
         {
             this.value = value;
+            if (C.current_context != null)
+            {
+                parent = new WeakReference<C>(C.current_context);
+                C.current_context.items.Add(this);
+            }
+            else
+            {
+                C.current_context = this;
+                Debug.Assert(C.root == null);
+                C.root = this;
+            }
         }
 
         public void SetCurrent(C c)
@@ -77,17 +91,44 @@ namespace LodgeiT
             return result;
         }
 
+        public void pop([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0)
+        {
+            log(string.Format(format, arg0));
+        }
+
+        public void log(string v)
+        {
+            Debug.Assert(C.root != null);
+            Debug.Assert(C.current_context != null);
+            items.Add(new C(v));
+        }
+        
+        public void log([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0)
+        {
+            log(string.Format(format, arg0));
+        }
+
+        public void log([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0, object? arg1)
+        {
+            log(string.Format(format, arg0, arg1));
+        }
+
         public void pop()
         {
             tw.WriteLine("done" + value);
+
             if (this == root)
+            {
                 root = null;
+                C.current_context = null;
+            }
             else
             {
-                C c;
-                bool GotParent = parent.TryGetTarget(out c);
+                C p;
+                bool GotParent = parent.TryGetTarget(out p);
                 Debug.Assert(GotParent);
-                c.items.Remove(this);
+                p.items.Remove(this);
+                C.current_context = p;
             }
         }
     }
@@ -376,18 +417,8 @@ namespace LodgeiT
         private C push(string value)
         {
             tw.WriteLine(value + "...");
-
             C c = new C(value);
-            c.parent = new WeakReference<C>(C.current_context);
-            if (C.current_context != null)
-                C.current_context.items.Add(c);
-            else
-            {
-                C.current_context = c;
-                Debug.Assert(C.root == null);
-                C.root = c;
-            }
-
+            C.current_context = c;
             return c;
         }
     
@@ -449,30 +480,47 @@ namespace LodgeiT
             foreach (/*Excel.Worksheet*/var sheet in _app.Worksheets)
             {
                 _sheet = sheet;
-
-                // ignore any sheet that does not have the type header
-                if (GetCellValue(new Pos { col = 'A', row = 1 }).Trim().ToLower() != "sheet type:")
-                    continue;
-
-                string sheet_type_uri_string = GetCellValue(new Pos { col = 'B', row = 1 }).Trim();
-                INode sheet_type_uri = _g.CreateUriNode(new Uri(sheet_type_uri_string));
-                if (!known_sheets.Contains(sheet_type_uri))
-                {
-                    ErrMsg("unknown sheet type: " + sheet_type_uri_string + ", ignoring.");
-                    return false;
-                }
-                INode record_instance = null;
-                INode sheet_template = GetObject(sheet_type_uri, u("excel:root"));
-                if (!ExtractRecordByTemplate(sheet_template, ref record_instance))
-                    return false;
-                //Assert(_g, record_instance, u("excel:has_sheet_name"), AssertValue(_g, _g.CreateLiteralNode(sheet.Name)));
-                Assert(_g, record_instance, u("excel:sheet_type"), sheet_type_uri);
-                if (!extracted_instances_by_sheet_type.ContainsKey(sheet_type_uri))
-                    extracted_instances_by_sheet_type[sheet_type_uri] = new List<SheetInstanceData>();
-                extracted_instances_by_sheet_type[sheet_type_uri].Add(new SheetInstanceData(_sheet.Name, record_instance));
+                if (!ScanSheet(known_sheets, extracted_instances_by_sheet_type)) return false;
             }
             return true;
         }
+
+        private bool ScanSheet(IEnumerable<INode> known_sheets, Dictionary<INode, IList<SheetInstanceData>> extracted_instances_by_sheet_type)
+        {
+            C c = push("scan sheet '{0}'", _sheet.Name);
+            if (GetCellValue(new Pos { col = 'A', row = 1 }).Trim().ToLower() != "sheet type:")
+            {
+                c.pop("sheet '{0}' does not have sheet type header", _sheet.Name);
+                return true;
+            }
+
+            string sheet_type_uri_string = GetCellValue(new Pos { col = 'B', row = 1 }).Trim();
+            INode sheet_type_uri = _g.CreateUriNode(new Uri(sheet_type_uri_string));
+            c.log("sheet '{0}' has sheet type: '{0}'", _sheet.Name, sheet_type_uri);
+            
+            if (!known_sheets.Contains(sheet_type_uri))
+            {
+                ErrMsg("unexpected sheet type: `" + sheet_type_uri_string + "`.");
+                return false; //die
+            }
+
+            INode record_instance = null;
+            INode sheet_template = GetObject(sheet_type_uri, u("excel:root"));
+                
+            if (!ExtractRecordByTemplate(sheet_template, ref record_instance))
+                return false; //die
+            
+            Assert(_g, record_instance, u("excel:sheet_type"), sheet_type_uri);
+            
+            // todo as defaultdict: extracted_instances_by_sheet_type[sheet_type_uri].Add(new SheetInstanceData(_sheet.Name, record_instance));
+            if (!extracted_instances_by_sheet_type.ContainsKey(sheet_type_uri))
+                extracted_instances_by_sheet_type[sheet_type_uri] = new List<SheetInstanceData>();
+            extracted_instances_by_sheet_type[sheet_type_uri].Add(new SheetInstanceData(_sheet.Name, record_instance));
+
+            c.pop();
+            return true;
+        }
+
         private bool make_sure_all_non_optional_sheets_are_present(IEnumerable<INode> known_sheets, Dictionary<INode, IList<SheetInstanceData>> extracted_instances_by_sheet_type)
         {
             foreach (INode known_sheet in known_sheets)
@@ -489,11 +537,8 @@ namespace LodgeiT
         }
         public bool ExtractSheetGroupData(string UpdatedRdfTemplates = "")
         {
-            C c = push("load data description and extract worksheet data");
-            
             try
             {
-                
                 LoadTemplates(UpdatedRdfTemplates);
                 return this.CreateRdfEndpointRequestFromSheetGroupData();
             }
@@ -502,8 +547,6 @@ namespace LodgeiT
                 FailReturn(e);
                 return false;
             }
-
-            c.pop();
         }
 
         private void FailReturn(RdfTemplateError e)
@@ -603,6 +646,8 @@ namespace LodgeiT
 #endif
         public bool ExtractRecordByTemplate(INode template, ref INode individual)
         {
+            C c = push("extract record at '{0}'", GetPos(template).ToString());
+
             var map = new FieldMap();
             var unknown_fields = new List<INode>();
             if (!HeadersMapping(template, ref map, ref unknown_fields))
@@ -643,6 +688,7 @@ namespace LodgeiT
             if (unknown_fields.Count > 0)
                 Assert(_rg, individual, u("excel:has_unknown_fields"), _rg.AssertList(unknown_fields));
             return true;
+            c.pop();
         }
 
         protected FieldMap GetRecordCellPositions(INode template, FieldMap map, int item_offset)
@@ -703,13 +749,22 @@ namespace LodgeiT
 
         protected bool ExtractRecord(INode template, FieldMap map, int item_offset, ref INode record, bool isRequired)
         {
+            C c = push("ExtractRecord {0}", item_offset);
             var cls = GetClass(template);
             var values = new Dictionary<INode, RdfSheetEntry>();
             var cell_positions = GetRecordCellPositions(template, map, item_offset);
             if (!ReadCellValues(cell_positions, ref values))
+            {
+                c.pop();
                 return false;
+            }
+
             if (!ReadSubTemplates(template, ref values))
+            {
+                c.pop();
                 return false;
+            }
+
             if (!values.Any())
             {
                 if (isRequired)
@@ -719,6 +774,7 @@ namespace LodgeiT
                         msg += FieldTitles(mapping.Key).First() + " at " + mapping.Value.Cell + "\n";
                     ErrMsg(msg);
                 }
+                c.pop();
                 return false;
             }
             record = Bn(_rg, "record");
@@ -732,11 +788,14 @@ namespace LodgeiT
                     AssertPosFlat(entry.Value._obj, entry.Value._pos);
                 Assert(_g, entry.Value._obj, u("excel:has_sheet_name"), _sheet.Name.ToLiteral(_g));
             }
+            c.pop();
             return true;
         }
 
         protected bool ReadCellValues(FieldMap cell_positions, ref Dictionary<INode, RdfSheetEntry> values)
         {
+            C c = push("ReadCellValues {0}", cell_positions.ToString());
+
             foreach (KeyValuePair<INode, Pos> mapping in cell_positions)
             {
                 INode field = mapping.Key;
@@ -745,26 +804,41 @@ namespace LodgeiT
                 IEnumerable<INode> types = GetObjects(field, "excel:type");
 
                 if (!ReadCellAsType(pos, field, types, ref obj))
-                    return false; //either error or possibly end of sheet
+                {
+                    c.pop();
+                    return false; //either parsing error or possibly end of sheet
+                }
 
                 if (obj != null)
                     values[GetPropertyUri(field)] = new RdfSheetEntry(AssertValue(_rg, obj), pos);
-                else if (!BoolObjectWithDefault(field, u("excel:optional"), true))
+                else if (!FieldIsOptional(field))
                 {
-                    ErrMsg("missing required field in " + _sheet.Name + " at " + pos.Cell);
+                    ErrMsg("missing required field in " + _sheet.Name + " at " + pos.ToString() + ": " + FieldTitles(field).First());
+                    c.pop();
                     return false;
                 }
             }
+            c.pop();
             return true;
         }
 
+        private bool FieldIsOptional(INode field)
+        {
+            return BoolObjectWithDefault(field, u("excel:optional"), true);
+        }
+
+        INode DetermineTypeToReadCellAs(IEnumerable<INode> types)
+        {
+            if (!types.Any())
+                return u("xsd:string");
+            else
+                return types.First();//todo shouldn't this use One?? Are there situations where there is more than one type specified but we want the first one always? Is this basically OneWithDefault?
+        }
         bool ReadCellAsType(Pos pos, INode field, IEnumerable<INode> types, ref INode obj)
         {
-            INode type;
-            if (!types.Any())
-                type = u("xsd:string");
-            else
-                type = types.First();
+
+            INode type = DetermineTypeToReadCellAs(types);
+            
             if (type.Equals(u("xsd:decimal")))
             {
                 if (!ReadOptionalDecimal(pos, ref obj))
@@ -785,21 +859,21 @@ namespace LodgeiT
                 if (contents != DateTime.MinValue)
                     obj = contents.Date.ToLiteral(_g);
                 /*else
-                    if (CellStringContents(pos) != "")
+                    if (CellStringContents(pos) != "") // if there was text but it couldn't be parsed, throw an error
                     {
                         ErrMsg("error reading date in \"" + _sheet.Name + "\" at " + pos.Cell);
                         return false;
                     }*/
                 else
                 {
-                    string contents_str = GetCellValue(pos);
-                    if (contents_str != "")
+                    string contents_str = GetCellValue(pos); 
+                    if (contents_str != "") // if there was text but it couldn't be parsed, pass it on as string
                         obj = contents_str.ToLiteral(_g);
                 }
             }
             else if (type.Equals(u("excel:uri")))
             {
-                obj = GetUriObj(pos, field);
+                obj = GetUriObj(pos, field); //possibly throws
             }
             else if (type.Equals(u("xsd:string")))
             {
@@ -807,7 +881,7 @@ namespace LodgeiT
                 CellReadingResult status = GetCellValueAsString(pos, ref contents);
                 if (status == CellReadingResult.Ok)
                     obj = contents.ToLiteral(_g);
-                else if (status == CellReadingResult.Error) // maybe added for end of sheet data, but i'm not sure it makes sense
+                else if (status == CellReadingResult.Error) // todo: maybe added for end of sheet data, but i'm not sure it makes sense / really happens
                     return false;
             }
             else
