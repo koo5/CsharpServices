@@ -29,16 +29,6 @@ using ClosedXML.Excel;
 
 namespace LodgeiT
 {
-
-    // a mapping from field to Pos
-    public class FieldMap : Dictionary<INode, Pos>
-    {
-        public override string ToString()
-        {
-            return String.Join(", ", this.Select(kv => kv.Key.ToString() + " -> " + kv.Value.ToString())); 
-        }
-    }
-
     /*
     execution context, used for obtaining useful error messages
     */
@@ -103,6 +93,7 @@ namespace LodgeiT
 #endif
         {
             log(string.Format(format, arg0));
+            pop();
         }
 
         public void log(string v)
@@ -132,7 +123,7 @@ namespace LodgeiT
 
         public void pop()
         {
-            tw.WriteLine("done" + value);
+            tw.WriteLine("done " + value);
 
             if (this == root)
             {
@@ -186,6 +177,14 @@ namespace LodgeiT
     {
     }
 
+    // a mapping from field to Pos
+    public class FieldMap : Dictionary<INode, Pos>
+    {
+        public override string ToString()
+        {
+            return String.Join(", ", this.Select(kv => kv.Key.ToString()/*GetPropertyUri(kv.Key)*/ + " at " + kv.Value.ToString())); 
+        }
+    }
     class SheetInstanceData
     {
         public string name;
@@ -667,7 +666,7 @@ namespace LodgeiT
 #endif
         public bool ExtractRecordByTemplate(INode template, ref INode individual)
         {
-            C c = push("extract record at '{0}'", GetPos(template).ToString());
+            C c = push("extract table at '{0}'", GetPos(template).ToString());
 
             var map = new FieldMap();
             var unknown_fields = new List<INode>();
