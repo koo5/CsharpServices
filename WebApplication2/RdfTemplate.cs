@@ -1,33 +1,29 @@
 ﻿using System.Text;
 using System.Text.RegularExpressions;
-using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using VDS.RDF.Writing;
 using VDS.RDF.Nodes;
-using ClosedXML.Excel;
-using DocumentFormat.OpenXml.Presentation;
-using Lucene.Net.Diagnostics;
-#if VSTO
+//using Lucene.Net.Diagnostics;
+
+#if !OOXML
+
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Office.Interop.Excel;
 using Excel = Microsoft.Office.Interop.Excel;
+
+#else
+
+using System.Diagnostics.CodeAnalysis;
+using DocumentFormat.OpenXml.Presentation;
+using ClosedXML.Excel;
+
 #endif
-
-
-
-#if !VSTO
-
-
-
-#endif
-
 
 
 
@@ -37,7 +33,7 @@ namespace LodgeiT
     // a mapping from field to Pos
     public class FieldMap : Dictionary<INode, Pos>
     {
-        public string ToString()
+        public override string ToString()
         {
             return String.Join(", ", this.Select(kv => kv.Key.ToString() + " -> " + kv.Value.ToString())); 
         }
@@ -48,7 +44,12 @@ namespace LodgeiT
     */
     public class C
     {
+#if !OOXML
+        // this is really a matter of C# or dotnet version, but anyway
+        public WeakReference parent;
+#else
         public WeakReference<C> parent;
+#endif
         public static C root;
         public static C current_context;
         public string value;
@@ -61,7 +62,11 @@ namespace LodgeiT
             this.value = value;
             if (C.current_context != null)
             {
+#if !OOXML
+                parent = new WeakReference(C.current_context);
+#else
                 parent = new WeakReference<C>(C.current_context);
+#endif
                 C.current_context.items.Add(this);
             }
             else
@@ -91,7 +96,11 @@ namespace LodgeiT
             return result;
         }
 
+#if !OOXML
+        public void pop(string format, object arg0)
+#else
         public void pop([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0)
+#endif
         {
             log(string.Format(format, arg0));
         }
@@ -102,13 +111,21 @@ namespace LodgeiT
             Debug.Assert(C.current_context != null);
             items.Add(new C(v));
         }
-        
+
+#if !OOXML
+        public void log(string format, object arg0)
+#else
         public void log([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0)
+#endif
         {
             log(string.Format(format, arg0));
         }
 
+#if !OOXML
+        public void log(string format, object arg0, object arg1)
+#else
         public void log([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0, object? arg1)
+#endif
         {
             log(string.Format(format, arg0, arg1));
         }
@@ -125,7 +142,13 @@ namespace LodgeiT
             else
             {
                 C p;
+
+#if !OOXML
+                p = (C)parent.Target;
+                bool GotParent = p != null;
+#else
                 bool GotParent = parent.TryGetTarget(out p);
+#endif
                 Debug.Assert(GotParent);
                 p.items.Remove(this);
                 C.current_context = p;
@@ -134,9 +157,6 @@ namespace LodgeiT
     }
     
 
-    /// <summary>
-    /// abstraction of excel cell coordinates
-    /// </summary>
     public enum CellReadingResult
     {
         Ok,
@@ -151,7 +171,7 @@ namespace LodgeiT
         NewWorkbook
     }
 
-    class UriLabelPair
+    public class UriLabelPair
     {
         public string uri;
         public string label;
@@ -160,6 +180,10 @@ namespace LodgeiT
             uri = _uri;
             label = _label;
         }
+    }
+
+    public class UriLabelPairList : List<UriLabelPair>
+    {
     }
 
     class SheetInstanceData
@@ -235,7 +259,7 @@ namespace LodgeiT
     {
         private INode _sheetsGroupTemplateUri;
         // the sheet currently being read or populated:
-#if VSTO
+#if !OOXML
         private Worksheet _sheet;
         Excel.Application _app;
 #else
@@ -256,7 +280,7 @@ namespace LodgeiT
         protected decimal _freeBnId = 0;
 
 
-#if VSTO
+#if !OOXML
         public RdfTemplate(Excel.Application app)
         {
 #if !DEBUG
@@ -264,7 +288,7 @@ namespace LodgeiT
             {
 #endif
             _app = app;
-            Init(app);
+            Init();
 #if !DEBUG
             }
             catch (Exception e)
@@ -274,11 +298,8 @@ namespace LodgeiT
             }
 #endif
         }
+
         public RdfTemplate(Excel.Application app, string sheetsTemplateQName)
-        {
-            RdfTemplate(app, u(sheetsTemplateQName));
-        }
-        public RdfTemplate(Excel.Application app, Uri sheetsTemplateUri)
         {
 #if !DEBUG
             try
@@ -286,12 +307,12 @@ namespace LodgeiT
 #endif
             _app = app;
             Init();
-            _sheetsGroupTemplateUri = _g.CreateUriNode(sheetsTemplateUri);
+            _sheetsGroupTemplateUri = _g.CreateUriNode(sheetsTemplateQName);
 #if !DEBUG
             }
             catch (Exception e)
             {
-                MessageBox.Show("while initializing RdfTemplate(" + sheetsTemplateUri.ToString() + "): " + e.Message, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("while initializing RdfTemplate(" + sheetsTemplateQName + "): " + e.Message, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 throw e;
             }
 #endif
@@ -331,7 +352,7 @@ namespace LodgeiT
             _rg.BaseUri = uu("l:request_graph");
         }
 
-#if VSTO
+#if !OOXML
 
         private void ErrMsg(string msg)
         {
@@ -352,22 +373,22 @@ namespace LodgeiT
         
 #endif
 
-#if VSTO
+#if !OOXML
 
         public List<string> AvailableSheetSets(string rdf_templates)
         {
-            var ctx = new Ctx("AvailableSheetSets({0})", rdf_templates);
+            C c = push("AvailableSheetSets({0})", rdf_templates);
             LoadTemplates(rdf_templates);
             List<string> result = new List<string>();
             foreach (var i in GetSubjects(u("rdf:type"), u("excel:sheet_set")))
                 result.Add(i.AsValuedNode().AsString());
-            ctx.pop();
+            c.pop();
             return result;
         }
-        public List<UriLabelPair> ExampleSheetSets(string rdf_templates)
+        public UriLabelPairList ExampleSheetSets(string rdf_templates)
         {
             LoadTemplates(rdf_templates);
-            List<UriLabelPair> result = new List<UriLabelPair>();
+            UriLabelPairList result = new UriLabelPairList();
             foreach (var i in GetSubjects(u("rdf:type"), u("excel:example_sheet_set")))
             {
                 if (BoolObjectWithDefault(i, u("excel:is_listed_by_hardcoding"), false))
@@ -574,7 +595,7 @@ namespace LodgeiT
             }
             return n.First().AsValuedNode().AsString();
         }
-#if VSTO
+#if !OOXML
         public void LoadRequestSheets(StreamReader data)
         {
             /* todo. 
@@ -636,7 +657,7 @@ namespace LodgeiT
             }
             return safeName;
         }
-#if VSTO
+#if !OOXML
         public void WriteFirstRow(INode sheet_decl)
         {
             WriteString(new Pos { col = 'A', row = 1 }, "sheet type:");
@@ -851,7 +872,7 @@ namespace LodgeiT
             }
             else if (type.Equals(u("xsd:dateTime")))
             {
-#if VSTO
+#if !OOXML
                 DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
 #else
                 DateTime contents = DateTime.FromFileTimeUtc(123);
@@ -959,13 +980,13 @@ namespace LodgeiT
             if (sValue == "")
                 return true;
 
-#if VSTO
+#if !OOXML
             Excel.Range rng = _sheet.Range[pos.Cell, pos.Cell];
 #else
             var rng = _sheet.Cell(pos.Cell);
 #endif
             decimal result = 0;
-#if VSTO
+#if !OOXML
             if (rng.Value != null)
             {
                 try
@@ -993,37 +1014,27 @@ namespace LodgeiT
 
         public CellReadingResult GetCellValueAsString(Pos pos, ref string result)
         {
-#if VSTO
-            Range rng = _sheet.get_Range(pos.Cell, pos.Cell);
-            if (rng.Value2 is Int32)
-            {
-                ErrMsg("error in " + _sheet.Name + " " + pos.Cell);
-                return CellReadingResult.Error;
-            }
-            string sValue = null;
+#if !OOXML
+            Range rng = _sheet.get_Range(pos.Cell);
             if (rng.Value2 != null)
-                sValue = Convert.ToString(rng.Value2);
+                result = Convert.ToString(rng.Value2);
             else
-                sValue = Convert.ToString(rng.Text);
-            if (sValue == null)
+                result = Convert.ToString(rng.Text);
+            if (result == null)
                 return CellReadingResult.Empty;
-            sValue = sValue.Trim();
-            if (sValue.Length == 0)
+            result = result.Trim();
+            if (result.Length == 0)
                 return CellReadingResult.Empty;
-            result = sValue/**.Trim('$')*/;
             return CellReadingResult.Ok;
 #else
-            try
+            if (_sheet.Cell(pos.Cell).TryGetValue(out result))
             {
-                if (_sheet.Cell(pos.Cell).TryGetValue(out result))
-                    return CellReadingResult.Ok;
-                else
-                {
-                    ErrMsg("error in " + _sheet.Name + " " + pos.Cell);
-                    return CellReadingResult.Error;
-                }
+                result = result.Trim();
+                if (result.Length == 0)
+                    return CellReadingResult.Empty;
+                return CellReadingResult.Ok;
             }
-            catch (InvalidCastException e)
+            else
             {
                 ErrMsg("error in " + _sheet.Name + " " + pos.Cell);
                 return CellReadingResult.Error;
@@ -1172,7 +1183,7 @@ namespace LodgeiT
             return true;
         }
 
-#if VSTO
+#if !OOXML
         void WriteData(INode template, INode doc)
         {
             var pos = GetPos(template);
@@ -1496,7 +1507,7 @@ namespace LodgeiT
         }
         protected string GetCellValue(Pos pos)
         {
-#if VSTO
+#if !OOXML
             return ExporttoXMLBase.GetCellValue(_sheet, pos.Cell);
 #else
             // uhhh, figure out what GetCellValue does, exactly
@@ -1525,7 +1536,7 @@ namespace LodgeiT
             //return u(":bn_" + id_base + (_freeBnId++).ToString());
             return g.CreateBlankNode();
         }
-#if VSTO
+#if !OOXML
         // isMulti = true:
         //	create, or create with a different name, if a sheet with name sheet_name already exists
         // isMulti = false:	
@@ -1650,7 +1661,7 @@ namespace LodgeiT
 #if JINDRICH_DEBUG
                 reader = new StreamReader(File.OpenRead(@"C:\Users\kokok\source\repos\LodgeITSmart\LodgeiTSmart\LodgeiTSmart\Resources\RdfTemplates.n3"));
 #else
-#if VSTO
+#if !OOXML
                 reader = new StreamReader(new MemoryStream((byte[])Properties.Resources.ResourceManager.GetObject("RdfTemplates")));
 #else
                 reader = new StreamReader(File.OpenRead(/*Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR") + "/" +  */ "RdfTemplates.n3"));
@@ -1667,7 +1678,7 @@ namespace LodgeiT
 #endif
             c.pop();
         }
-#if VSTO
+#if !OOXML
         protected Worksheet SheetByName(string name)
         {
             foreach (Excel.Worksheet sheet in _app.Worksheets)
