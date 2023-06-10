@@ -18,21 +18,16 @@ public class Tests
     public void Test1()
     {
         c.WriteLine("hello");
-        Thread.Sleep(1000);
-        c.WriteLine("hello");
-        Thread.Sleep(1000);
-        c.WriteLine("hello");
-        Thread.Sleep(1000);
-        c.WriteLine("hello");
         Thread.Sleep(300);
         c.WriteLine("hello");
         Thread.Sleep(300);
+        c.WriteLine("hello");
     }
 
     [Test]
     public void Test2()
     {
-        c.WriteLine("hello");
+        c.WriteLine("let's go");
         string root = "ic_ui:investment_calculator_sheets";
         LoadOptions.DefaultGraphicEngine = new ClosedXML.Graphics.DefaultGraphicEngine("Noto Serif");
         /*

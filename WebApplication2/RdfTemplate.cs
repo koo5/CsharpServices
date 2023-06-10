@@ -95,6 +95,12 @@ namespace LodgeiT
             pop();
         }
 
+        public void pop(string str)
+        {
+            log(str);
+            pop();
+        }
+
         public void log(string v)
         {
             Debug.Assert(C.root != null);
@@ -816,8 +822,9 @@ namespace LodgeiT
                     foreach (KeyValuePair<INode, Pos> mapping in cell_positions)
                         msg += FieldTitles(mapping.Key).First() + " at " + mapping.Value.Cell + "\n";
                     ErrMsg(msg);
+                    //should throw here?
                 }
-                c.pop();
+                c.pop("no values");
                 return false;
             }
             record = Bn(_rg, "record");
@@ -900,19 +907,8 @@ namespace LodgeiT
             }
             else if (type.Equals(u("xsd:dateTime")))
             {
-#if !OOXML
-                DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
-#else
-                DateTime contents = DateTime.FromFileTimeUtc(123);
-#endif
-                if (contents != DateTime.MinValue)
-                    obj = contents.Date.ToLiteral(_g);
-                else
-                {
-                    string contents_str = GetCellValueAsString2(pos); 
-                    if (contents_str != "") // if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side?
-                        obj = contents_str.ToLiteral(_g);
-                }
+                if (!ReadOptionalDatetime(pos, ref obj))
+                    return false;
             }
             else if (type.Equals(u("excel:uri")))
             {
@@ -989,7 +985,7 @@ namespace LodgeiT
 
     
     
-    public bool ReadOptionalDecimal(Pos pos, ref INode obj)
+    private bool ReadOptionalDecimal(Pos pos, ref INode obj)
         /*
         return true if cell is empty
         set obj and return true on successful parse	
@@ -1039,8 +1035,63 @@ namespace LodgeiT
             obj = result.ToLiteral(_g);
             return true;
 #endif
+        } 
+    
+    private bool ReadOptionalDatetime(Pos pos, ref INode obj)
+        /*
+        return true if cell is empty
+        set obj and return true on successful parse	
+        on parse error, return true and assert obj as a string.
+        */
+    {
+#if !OOXML
+
+??
+            Excel.Range rng = _sheet.Range[pos.Cell];
+
+            string txt =  rng.Text;
+            txt = txt.Trim();
+            if (txt == "")
+                return true;
+
+// throws what? we probably expect RdfTemplateErrror up the stack.        
+DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
+        
+        if (contents != DateTime.MinValue)
+            obj = contents.Date.ToLiteral(_g);
+        else
+        {
+            string contents_str = GetCellValueAsString2(pos); 
+            if (contents_str != "") // if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side?
+                obj = contents_str.ToLiteral(_g);
+        }
+        return true;
+#else
+        
+        var rng = _sheet.Cell(pos.Cell);
+
+        string txt = GetCellValueAsString2(pos);
+        if (txt == "")
+            return true;
+
+        DateTime result;
+
+        try
+        {
+            result = rng.GetDateTime();
+        }
+        catch (InvalidCastException e)
+        {
+            obj = txt.ToLiteral(_g);
+            return true;
         }
 
+        obj = result.ToLiteral(_g);
+        return true;
+#endif
+    }
+    
+    
         public string GetCellValueAsString2(Pos pos)
         {
             string value = "";
