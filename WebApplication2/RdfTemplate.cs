@@ -44,7 +44,6 @@ namespace LodgeiT
         public static C current_context;
         public string value;
         public List<C> items = new List<C>();
-        public static TextWriter tw;
 
 
         public C(string value)
@@ -123,7 +122,7 @@ namespace LodgeiT
 
         public void pop()
         {
-            tw.WriteLine("done " + value);
+            RdfTemplate.tw.WriteLine("done " + value);
 
             if (this == root)
             {
@@ -256,7 +255,6 @@ namespace LodgeiT
     /// </summary>
     public class RdfTemplate// : TemplateGenerator
     {
-        private INode _sheetsGroupTemplateUri;
         // the sheet currently being read or populated:
 #if !OOXML
         private Worksheet _sheet;
@@ -264,10 +262,10 @@ namespace LodgeiT
 #else
         private IXLWorksheet _sheet;
         XLWorkbook _app;
-        public string alerts;
 #endif
 
-
+        private INode _sheetsGroupTemplateUri;
+        public string alerts;
         public static TextWriter tw;
         private readonly bool _isFreshSheet = true;
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
@@ -316,6 +314,24 @@ namespace LodgeiT
             }
 #endif
         }
+        public RdfTemplate(Excel.Application app, Uri sheetsTemplateUri)
+        {
+#if !DEBUG
+            try
+            {
+#endif
+            _app = app;
+            Init();
+            _sheetsGroupTemplateUri = _g.CreateUriNode(sheetsTemplateUri);
+#if !DEBUG
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("while initializing RdfTemplate(" + sheetsTemplateUri + "): " + e.Message, "LodgeIt", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw e;
+            }
+#endif
+        }
 
 #else
 
@@ -349,13 +365,16 @@ namespace LodgeiT
             _rg.NamespaceMap.AddNamespace("", UriFactory.Create("https://rdf.lodgeit.net.au/v1/excel_request#"));
             /* BaseUri is also the graph uri, for some strange reason */
             _rg.BaseUri = uu("l:request_graph");
+#if !OOXML
+            tw = System.Console.Out;
+#endif
         }
 
 #if !OOXML
 
         private void ErrMsg(string msg)
         {
-            System.Console.WriteLine(msg);
+            tw.WriteLine(msg);
             MessageBox.Show(msg, "LodgeiT", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 #else
@@ -376,7 +395,7 @@ namespace LodgeiT
 
         public List<string> AvailableSheetSets(string rdf_templates)
         {
-            C c = push("AvailableSheetSets({0})", rdf_templates);
+            C c = push("AvailableSheetSets");
             LoadTemplates(rdf_templates);
             List<string> result = new List<string>();
             foreach (var i in GetSubjects(u("rdf:type"), u("excel:sheet_set")))
@@ -490,16 +509,20 @@ namespace LodgeiT
             }
 
             Assert(_rg, u(_rg, ":request"), u(_rg, "excel:has_sheet_instances"), _rg.AssertList(all_request_sheets));
-            Assert(_g, u(":request"), u("l:has_client_version"), _g.CreateLiteralNode("3"));
+            Assert(_g, u(":request"), u("l:client_version"), _g.CreateLiteralNode("3"));
             //Assert(_g, u(":request"), u("l:client_git_info"), _g.CreateLiteralNode(Properties.Resources.ResourceManager.GetObject("repo_status").ToString().Replace("\n", Environment.NewLine)));
             return true;
         }
 
         private bool ExtractDataInstances(IEnumerable<INode> known_sheets, ref Dictionary<INode, IList<SheetInstanceData>> extracted_instances_by_sheet_type)
         {
-            foreach (/*Excel.Worksheet*/var sheet in _app.Worksheets)
+#if !OOXML
+            foreach (Excel.Worksheet sheet in _app.Worksheets)
+#else
+            foreach (var sheet in _app.Worksheets)
+#endif
             {
-                _sheet = sheet;
+                    _sheet = sheet;
                 if (!ScanSheet(known_sheets, extracted_instances_by_sheet_type)) return false;
             }
             return true;
@@ -508,13 +531,13 @@ namespace LodgeiT
         private bool ScanSheet(IEnumerable<INode> known_sheets, Dictionary<INode, IList<SheetInstanceData>> extracted_instances_by_sheet_type)
         {
             C c = push("scan sheet '{0}'", _sheet.Name);
-            if (GetCellValue(new Pos { col = 'A', row = 1 }).Trim().ToLower() != "sheet type:")
+            if (GetCellValueAsString2(new Pos { col = 'A', row = 1 }).ToLower() != "sheet type:")
             {
                 c.pop("sheet '{0}' does not have sheet type header", _sheet.Name);
                 return true;
             }
 
-            string sheet_type_uri_string = GetCellValue(new Pos { col = 'B', row = 1 }).Trim();
+            string sheet_type_uri_string = GetCellValueAsString2(new Pos { col = 'B', row = 1 });
             INode sheet_type_uri = _g.CreateUriNode(new Uri(sheet_type_uri_string));
             c.log("sheet '{0}' has sheet type: '{0}'", _sheet.Name, sheet_type_uri);
             
@@ -878,16 +901,10 @@ namespace LodgeiT
 #endif
                 if (contents != DateTime.MinValue)
                     obj = contents.Date.ToLiteral(_g);
-                /*else
-                    if (CellStringContents(pos) != "") // if there was text but it couldn't be parsed, throw an error
-                    {
-                        ErrMsg("error reading date in \"" + _sheet.Name + "\" at " + pos.Cell);
-                        return false;
-                    }*/
                 else
                 {
-                    string contents_str = GetCellValue(pos); 
-                    if (contents_str != "") // if there was text but it couldn't be parsed, pass it on as string
+                    string contents_str = GetCellValueAsString2(pos); 
+                    if (contents_str != "") // if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side?
                         obj = contents_str.ToLiteral(_g);
                 }
             }
@@ -909,41 +926,6 @@ namespace LodgeiT
             return true;
         }
 
-
-        /*
-        todo
-        public CellReadingResult GetCellValueAsInteger(Pos pos, ref int result)
-        {
-            Range rng = _sheet.get_Range(pos.Cell, pos.Cell);
-            if (rng.Value2 is Int32)
-            {
-                ErrMsg("error in " + _sheet.Name + " " + pos.Cell);
-                return CellReadingResult.Error;
-            }
-            string sValue = null;
-            if (rng.Value2 != null)
-                sValue = Convert.ToString(rng.Value2);
-            else
-                sValue = Convert.ToString(rng.Text);
-            if (sValue == null)
-                return CellReadingResult.Empty;
-            if (sValue.Length == 0)
-                return CellReadingResult.Empty;
-            string sVal = sValue.Trim('$');
-            if (int.TryParse(sVal, out result))
-                return CellReadingResult.Ok;
-            else
-                return CellReadingResult.Error;
-        }
-        */
-
-        public string CellStringContents(Pos pos)
-        {
-            string contents = "";
-            CellReadingResult status = GetCellValueAsString(pos, ref contents);
-            return contents;
-
-        }
         public bool ReadOptionalInt(Pos pos, ref INode obj)
         /*
         return true if cell is empty
@@ -951,7 +933,7 @@ namespace LodgeiT
     show messagebox and return false on parse error.
         */
         {
-            string sValue = GetCellValue(pos).Trim();
+            string sValue = GetCellValueAsString2(pos).Trim();
             //sValue = sValue.Trim('$');
             int result;
             if (sValue == "")
@@ -974,43 +956,39 @@ namespace LodgeiT
         show messagebox and return false on parse error.
         */
         {
-            string sValue = GetCellValue(pos).Trim();
-            sValue = sValue.Trim('$');
-            if (sValue == "")
-                return true;
-
+            
 #if !OOXML
-            Excel.Range rng = _sheet.Range[pos.Cell, pos.Cell];
+            Excel.Range rng = _sheet.Range[pos.Cell];
+            string txt = rng.Text;
+            txt = txt.Trim();
+            if (txt == "")
+                return true;
+            try
+            {
+                decimal result = ((IConvertible)rng.Value2).ToDecimal(null);
+                obj = result.ToLiteral(_g);
+                return true;
+            }
+            catch (System.FormatException e)
+            {
+                ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + txt + "\", error: " + e.Message);
+                throw new RdfTemplateError();
+            }
+
 #else
             var rng = _sheet.Cell(pos.Cell);
-#endif
-            decimal result = 0;
-#if !OOXML
-            if (rng.Value != null)
-            {
-                try
-                {
-                    result = ((IConvertible)rng.Value).ToDecimal(null);
-                    obj = Math.Round(result, 6).ToLiteral(_g);
-                    return true;
-                }
-                catch (System.FormatException e)
-                {
-                    ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + sValue + "\", error: " + e.Message);
-                    throw new RdfTemplateInputError();
-                }
-            }
-
-            if (!decimal.TryParse(sValue, out result))
-            {
-                ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + sValue + "\"");
-                throw new RdfTemplateInputError();
-            }
-#endif
+            rng.
             obj = result.ToLiteral(_g);
             return true;
+#endif
         }
 
+        public string GetCellValueAsString2(Pos pos)
+        {
+            string value = "";
+            GetCellValueAsString(pos, ref value);
+            return value;
+        }
         public CellReadingResult GetCellValueAsString(Pos pos, ref string result)
         {
 #if !OOXML
@@ -1043,9 +1021,9 @@ namespace LodgeiT
 
         public void Assert(IGraph g, INode s, INode p, INode o)
         {
-            /*dotnetrdf 3.0 breaking change, nodes are no longer specific to individual graphs. Can we upgrade to 3.0? */
-            //g.Assert(new Triple(Tools.CopyNode(s, g), Tools.CopyNode(p, g), Tools.CopyNode(o, g)));
-            g.Assert(new Triple(s, p, o));
+            /*dotnetrdf 3.0 breaking(?) change, nodes are no longer specific to individual graphs. Can we upgrade to 3.0? */
+            g.Assert(new Triple(Tools.CopyNode(s, g), Tools.CopyNode(p, g), Tools.CopyNode(o, g)));
+            //g.Assert(new Triple(s, p, o));
         }
         public INode AssertValue(IGraph g, INode obj)
         {
@@ -1062,7 +1040,7 @@ namespace LodgeiT
         private INode GetUriObj(Pos pos, INode field)
         {
 
-            string contents = GetCellValue(pos);
+            string contents = GetCellValueAsString2(pos);
             if (contents.Equals(""))
                 return null;
             var prop = GetPropertyUri(field);
@@ -1128,7 +1106,7 @@ namespace LodgeiT
                     if (item > 25)//fixme
                         break;
                 }
-                string sKey = GetCellValue(pos2).ToLower();
+                string sKey = GetCellValueAsString2(pos2).ToLower();
                 if (sKey == "") continue;
                 bool header_belongs_to_matching_field_declaration = false;
                 foreach (var field in fields)
@@ -1351,14 +1329,14 @@ namespace LodgeiT
         {
             var title = GetTitle(template);
             bool is_horiz = GetIsHorizontal(template);
-            AddBoldValueBorder(_sheet, pos.Cell, title);
+            TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, title);
             pos.row++;
             foreach (var field in GetFields(template))
             {
                 if (!GetObjects(field, "excel:template").Any())
                 {
                     string cell_title = FieldTitles(field).First();
-                    AddBoldValueBorder(_sheet, pos.Cell, cell_title);
+                    TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, cell_title);
                     var comments = GetObjects(field, u("excel:comment"));
                     if (comments.Any())
                     {
@@ -1503,15 +1481,6 @@ namespace LodgeiT
             if (node == null)
                 return defa;
             return node.AsValuedNode().AsSafeBoolean();
-        }
-        protected string GetCellValue(Pos pos)
-        {
-#if !OOXML
-            return ExporttoXMLBase.GetCellValue(_sheet, pos.Cell);
-#else
-            // uhhh, figure out what GetCellValue does, exactly
-            return _sheet.Cell(pos.Cell).GetString();
-#endif
         }
 
         protected IEnumerable<string> FieldTitles(INode field)
