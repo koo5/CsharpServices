@@ -882,6 +882,12 @@ namespace LodgeiT
 
             INode type = DetermineTypeToReadCellAs(types);
             
+            /* xsd:decimal and integer are, here, regarded as being "optional" in the sense of a nullable value, an empty cell is not regarded as an error, but "represented" by a missing value.
+             the types ("xsd:decimal") should eventually be changed to express that ("l:optional_decimal").
+             But also a new type specifically for monetary values should be introduced, that deals in a special way with formatting. A decimal in the role of, say, percents, would not be entered with a $ sign.             
+             see also "datatypes" in RdfTemplates.n3
+             
+             */
             if (type.Equals(u("xsd:decimal")))
             {
                 if (!ReadOptionalDecimal(pos, ref obj))
@@ -932,24 +938,58 @@ namespace LodgeiT
     set obj and return true on successful parse	
     show messagebox and return false on parse error.
         */
+        /*this was plain wrong. If the cell contains a numeric value, and the column is not wide enough, ##### will be displayed, and then we'd be trying to parse that.
+         also, why trim a $ off an integer? monetary value integer?
+         */ 
         {
-            string sValue = GetCellValueAsString2(pos).Trim();
-            //sValue = sValue.Trim('$');
-            int result;
-            if (sValue == "")
+            
+#if !OOXML
+            Excel.Range rng = _sheet.Range[pos.Cell];
+
+            string txt =  rng.Text;
+            txt = txt.Trim();
+            if (txt == "")
                 return true;
-            else
+
+            try
             {
-                if (!int.TryParse(sValue, out result))
-                {
-                    ErrMsg("error reading integer in " + _sheet.Name + " at " + pos.Cell);
-                    return false;
-                }
+                int result = ((IConvertible)rng.Value2).ToInteger(null);
+                obj = result.ToLiteral(_g);
+                return true;
             }
+            catch (System.FormatException e)
+            {
+                ErrMsg("error reading integer number in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + txt + "\", error: " + e.Message);
+                throw new RdfTemplateError();
+            }
+
+#else
+            int result=123;//fixme
+            var rng = _sheet.Cell(pos.Cell);
+            
+            string txt = GetCellValueAsString2(pos);
+            if (txt == "")
+                return true;
+
+            try
+            {
+                /*not sure what the semantics of this attempted conversion are. Cells cannot technically contain integers, not sure how ClosedXML deals with this.*/
+                result = (int)rng.Value;
+            }
+            catch (InvalidCastException e)
+            {
+                ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + txt + "\", error: " + e.Message);
+                throw new RdfTemplateError();
+            }
+
             obj = result.ToLiteral(_g);
             return true;
+#endif
         }
-        public bool ReadOptionalDecimal(Pos pos, ref INode obj)
+
+    
+    
+    public bool ReadOptionalDecimal(Pos pos, ref INode obj)
         /*
         return true if cell is empty
         set obj and return true on successful parse	
@@ -959,10 +999,12 @@ namespace LodgeiT
             
 #if !OOXML
             Excel.Range rng = _sheet.Range[pos.Cell];
-            string txt = rng.Text;
+
+            string txt =  rng.Text;
             txt = txt.Trim();
             if (txt == "")
                 return true;
+            
             try
             {
                 decimal result = ((IConvertible)rng.Value2).ToDecimal(null);
@@ -976,8 +1018,24 @@ namespace LodgeiT
             }
 
 #else
+            double result=123;//fixme
             var rng = _sheet.Cell(pos.Cell);
-            rng.
+
+            string txt = GetCellValueAsString2(pos);
+            if (txt == "")
+                return true;
+            
+            try
+            {
+                rng.GetDouble();
+            }
+            catch (InvalidCastException e)
+            {
+                ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + txt +
+                       "\", error: " + e.Message);
+                throw new RdfTemplateError();
+            }
+            
             obj = result.ToLiteral(_g);
             return true;
 #endif

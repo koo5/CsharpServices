@@ -52,7 +52,7 @@ public class Tests
         var wb = new XLWorkbook("empty IC template.xlsx");
         
         RdfTemplate.tw = c;
-        LodgeiT.C.tw = c;
+        LodgeiT.RdfTemplate.tw = c;
         RdfTemplate t = new RdfTemplate(wb, root);
         
         t.ExtractSheetGroupData();
