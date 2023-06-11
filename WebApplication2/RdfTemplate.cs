@@ -935,7 +935,7 @@ namespace LodgeiT
     show messagebox and return false on parse error.
         */
         /*this was plain wrong. If the cell contains a numeric value, and the column is not wide enough, ##### will be displayed, and then we'd be trying to parse that.
-         also, why trim a $ off an integer? monetary value integer?
+         also, why trim a $ off an integer? even if we wanted to have fields of type "monetary integer", it should be a different datatype.
          */ 
         {
             
@@ -969,7 +969,11 @@ namespace LodgeiT
 
             try
             {
-                /*not sure what the semantics of this attempted conversion are. Cells cannot technically contain integers, not sure how ClosedXML deals with this.*/
+                /*not sure what the semantics of this attempted conversion are. Cells cannot technically contain integers, not sure how ClosedXML deals with this.
+                 would this throw an error if the number was big enough not to fit in the range of integers that are exactly representable as doubles (or whatever actually excel uses to store cell values)?
+                 do we need to possibly check that it's within that range?
+                 we cannot just round whatever comes, because users could enter decimal number in an int field, and we don't want to silently round those.   
+                 */
                 result = (int)rng.Value;
             }
             catch (InvalidCastException e)
