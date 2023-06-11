@@ -24,9 +24,8 @@ RdfTemplate.tw = Console.Out;
 
 /* called by frontend. returns either result or error. error is a text with newlines, possibly including a rendering
  of a user-centric backtrace given by t.alerts */
-app.MapPost("/xlsx2rdf", (string root, /*[FromBody] */string input_fn) =>
+app.MapPost("/xlsx2rdf", (string root, /*[FromBody] */string input_fn, string output_fn) =>
 {
-    string output_fn = input_fn + ".rdf";
     RdfTemplate t = new RdfTemplate(new XLWorkbook(input_fn), root);
     if (!t.ExtractSheetGroupData(""))
         return new RpcReply (null, t.alerts );
@@ -34,35 +33,15 @@ app.MapPost("/xlsx2rdf", (string root, /*[FromBody] */string input_fn) =>
     return new RpcReply ("ok",null );
     
 })
-.WithName("xlsx2rdf")
+.WithName("xlsx_to_rdf")
 .WithOpenApi();
 
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            "555"
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+app.Run("http://0.0.0.0:17789");
 
 
 
-app.Run();
 
-
-
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
 internal record RpcReply(string? result, string? error)
 {
 }
