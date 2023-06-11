@@ -949,7 +949,7 @@ namespace LodgeiT
 
             try
             {
-                int result = ((IConvertible)rng.Value2).ToInteger(null);
+                int result = ExporttoXMLBase.ParseInteger(txt);
                 obj = result.ToLiteral(_g);
                 return true;
             }
@@ -1045,29 +1045,28 @@ namespace LodgeiT
         /*
         return true if cell is empty
         set obj and return true on successful parse	
-        on parse error, return true and assert obj as a string.
+        on parse error, return true and assert obj as a string(!)
+         - if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side?
         */
-    {
+        {
 #if !OOXML
 
-??
-            Excel.Range rng = _sheet.Range[pos.Cell];
+        Excel.Range rng = _sheet.Range[pos.Cell];
 
-            string txt =  rng.Text;
-            txt = txt.Trim();
-            if (txt == "")
-                return true;
+        string txt =  rng.Text;
+        txt = txt.Trim();
+        if (txt == "")
+            return true;
 
-// throws what? we probably expect RdfTemplateErrror up the stack.        
-DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
+        // returns DateTime.MinValue on unsuccesful parse
+        DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
         
         if (contents != DateTime.MinValue)
             obj = contents.Date.ToLiteral(_g);
         else
         {
             string contents_str = GetCellValueAsString2(pos); 
-            if (contents_str != "") // if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side?
-                obj = contents_str.ToLiteral(_g);
+            obj = contents_str.ToLiteral(_g);
         }
         return true;
 #else
