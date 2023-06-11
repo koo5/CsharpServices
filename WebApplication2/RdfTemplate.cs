@@ -978,7 +978,7 @@ namespace LodgeiT
             }
             catch (InvalidCastException e)
             {
-                ErrMsg("error reading decimal in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + txt + "\", error: " + e.Message);
+                ErrMsg("error reading integer number in " + _sheet.Name + " at " + pos.Cell + ", got: \"" + txt + "\", error: " + e.Message);
                 throw new RdfTemplateError();
             }
 
