@@ -38,12 +38,12 @@ namespace LodgeiT
         // this is really a matter of C# or dotnet version, but anyway
         public WeakReference parent;
 #else
-        public WeakReference<C> parent;
+        private WeakReference<C> parent;
 #endif
         public static C root;
         public static C current_context;
-        public string value;
-        public List<C> items = new List<C>();
+        private string value;
+        private List<C> items = new List<C>();
 
 
         public C(string value)
@@ -73,13 +73,13 @@ namespace LodgeiT
 
         public string PrettyString(int indent = 0)
         {
-            string result = String.Concat(Enumerable.Repeat("--", indent)) + value;
+            string result = string.Concat(Enumerable.Repeat("--", indent)) + value;
             if (items.Count > 0)
                 result += ":";
             result += "\n";
             foreach (var i in items)
             {
-                result += i.PrettyString(indent + 2);
+                result += i.PrettyString(indent + 1);
             }
 
             return result;
@@ -128,7 +128,7 @@ namespace LodgeiT
 
         public void pop()
         {
-            RdfTemplate.tw.WriteLine("done " + value);
+            RdfTemplate.Tw.WriteLine("done " + value);
 
             if (this == root)
             {
@@ -146,7 +146,7 @@ namespace LodgeiT
                 bool GotParent = parent.TryGetTarget(out p);
 #endif
                 Debug.Assert(GotParent);
-                p.items.Remove(this);
+                //p.items.Remove(this);
                 C.current_context = p;
             }
         }
@@ -272,8 +272,8 @@ namespace LodgeiT
 #endif
 
         private INode _sheetsGroupTemplateUri;
-        public string alerts;
-        public static TextWriter? tw;
+        public string Alerts;
+        public static TextWriter? Tw;
         
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
         protected Graph _g;
@@ -387,13 +387,13 @@ namespace LodgeiT
 #else
         private void ErrMsg(string msg)
         {
-            tw.WriteLine(msg);
-            alerts += msg + "\n";
+            Tw.WriteLine(msg);
+            Alerts += msg + "\n";
         }
 
         private void wl(string s)
         {
-            tw.WriteLine(s);
+            Tw.WriteLine(s);
         }
         
 #endif
@@ -462,7 +462,7 @@ namespace LodgeiT
         
         private C push(string value)
         {
-            tw.WriteLine(value + "...");
+            Tw.WriteLine(value + "...");
             C c = new C(value);
             C.current_context = c;
             return c;
@@ -587,6 +587,8 @@ namespace LodgeiT
         }
         public bool ExtractSheetGroupData(string UpdatedRdfTemplates = "")
         {
+            C.root = null;
+            push("extract sheet group data");
             try
             {
                 LoadTemplates(UpdatedRdfTemplates);
@@ -606,7 +608,7 @@ namespace LodgeiT
 
         private void PopulateAlertsFromTrace(RdfTemplateError e)
         {
-            alerts = "during:\n" + C.root.PrettyString() + "\nerror:\n" + e.Message;
+            Alerts = "during:\n" + C.root.PrettyString() + "\nerror:\n" + e.Message;
         }
         
         private bool GetMultipleSheetsAllowed(INode sheet_decl)

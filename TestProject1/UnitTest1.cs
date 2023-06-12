@@ -46,11 +46,12 @@ public class Tests
         
         var wb = new XLWorkbook("empty IC template.xlsx");
         
-        RdfTemplate.tw = c;
-        LodgeiT.RdfTemplate.tw = c;
+        RdfTemplate.Tw = c;
+        LodgeiT.RdfTemplate.Tw = c;
         RdfTemplate t = new RdfTemplate(wb, root);
         
         t.ExtractSheetGroupData();
+        c.WriteLine(C.root.PrettyString());
         Assert.Pass();
     }
 }

@@ -20,7 +20,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-RdfTemplate.tw = Console.Out;
+RdfTemplate.Tw = Console.Out;
 
 /* called by frontend. returns either result or error. error is a text with newlines, possibly including a rendering
  of a user-centric backtrace given by t.alerts */
@@ -28,7 +28,7 @@ app.MapPost("/xlsx2rdf", (string root, /*[FromBody] */string input_fn, string ou
 {
     RdfTemplate t = new RdfTemplate(new XLWorkbook(input_fn), root);
     if (!t.ExtractSheetGroupData(""))
-        return new RpcReply (null, t.alerts );
+        return new RpcReply (null, t.Alerts );
     t.SerializeToFile(output_fn);
     return new RpcReply ("ok",null );
     
