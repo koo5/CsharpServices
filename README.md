@@ -22,6 +22,13 @@ at the time of writing, this is: (bash)
 
 
 
+```
+WebApplication2 (master) 
+>> CSHARPSERVICES_DATADIR=../data/ dotnet run -v 5
+....
+>> curl -L -S --fail --max-time 320  --header 'Content-Type: application/json' --data '{"root":"ic_ui:investment_calculator_sheets", "input_fn":"/home/koom/repos/lodgeit-labs/accounts-assessor/0/accounts-assessor/sources/CsharpServices/data/empty IC template.xlsx", "output_fn":"nnnnnnnnn"}' http://robust10.local:17789/xlsx_to_rdf
+{"result":"ok","error":null}⏎                                                                                                            
 
+```
 
 

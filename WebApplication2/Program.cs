@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using LodgeiT;
-using VDS.RDF.Query.Expressions.Functions.Sparql.String;
 using ClosedXML.Excel;
-using DocumentFormat.OpenXml.Wordprocessing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +8,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Logging.SetMinimumLevel(LogLevel.Trace);
+builder.Services.AddLogging();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 
 var app = builder.Build();
 
@@ -20,7 +22,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
+app.Logger.LogError("ERROR!");
+app.Logger.LogWarning("WARN!");
+app.Logger.LogInformation("INFO!");
+app.Logger.LogDebug("DEBUG!");
+app.Logger.LogTrace("TRACE!");
+
 RdfTemplate.Tw = Console.Out;
+LoadOptions.DefaultGraphicEngine = new ClosedXML.Graphics.DefaultGraphicEngine("Noto Serif");
 
 
 
@@ -29,12 +39,14 @@ app.MapGet("/health", () => "ok")
     .WithOpenApi();
 
 
-app.MapPost("/xlsx_to_rdf", (string root, /*[FromBody] */string input_fn, string output_fn) =>
+//app.MapPost("/xlsx_to_rdf", ([FromBody] string root, [FromBody] string input_fn, [FromBody] string output_fn) =>
+app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
     {
-        RdfTemplate t = new RdfTemplate(new XLWorkbook(input_fn), root);
+        app.Logger.LogInformation("INFO!");
+        RdfTemplate t = new RdfTemplate(new XLWorkbook(rrr.input_fn), rrr.root);
         if (!t.ExtractSheetGroupData(""))
             return new RpcReply (null, t.Alerts );
-        t.SerializeToFile(output_fn);
+        t.SerializeToFile(rrr.output_fn);
         return new RpcReply ("ok",null );
     
     })
@@ -49,6 +61,9 @@ app.Run("http://0.0.0.0:17789");
 
 
 
+internal record RpcRequest(string root, string input_fn, string output_fn)
+{
+}
 internal record RpcReply(string? result, string? error)
 {
 }
