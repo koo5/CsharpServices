@@ -265,6 +265,7 @@ namespace LodgeiT
 #if !OOXML
         private Worksheet _sheet;
         Excel.Application _app;
+        private readonly bool _isFreshSheet = true;
 #else
         private IXLWorksheet _sheet;
         XLWorkbook _app;
@@ -272,15 +273,15 @@ namespace LodgeiT
 
         private INode _sheetsGroupTemplateUri;
         public string alerts;
-        public static TextWriter tw;
-        private readonly bool _isFreshSheet = true;
+        public static TextWriter? tw;
+        
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
         protected Graph _g;
         // here we put core request data that can be used to construct an example sheetset from a request:
         protected Graph _rg;
 
         // we generate some pseudo blank nodes, unique uris. But blank nodes work too.
-        protected decimal _freeBnId = 0;
+        protected decimal _freeBnId;
 
 
 #if !OOXML
@@ -784,7 +785,7 @@ namespace LodgeiT
                     catch (Exception ex)
                     {
                         ErrMsg(field.ToString() + " excel:template: " + ex.Message);
-                        throw ex;
+                        throw;
                     }
                     if (!ExtractRecordByTemplate(field_template, ref obj))
                         return false;
@@ -1721,7 +1722,7 @@ namespace LodgeiT
             catch (Exception ex)
             {
                 ErrMsg("Error: " + ex.Message);
-                throw ex;
+                throw;
             }
 #endif
         }
@@ -1744,7 +1745,10 @@ namespace LodgeiT
 #if !OOXML
                 reader = new StreamReader(new MemoryStream((byte[])Properties.Resources.ResourceManager.GetObject("RdfTemplates")));
 #else
-                reader = new StreamReader(File.OpenRead(/*Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR") + "/" +  */ "RdfTemplates.n3"));
+            {
+                string? s = Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR");
+                reader = new StreamReader(File.OpenRead((s ?? "") + "RdfTemplates.n3"));
+            }
 #endif
 #endif
             LoadRdf(reader);
@@ -1753,7 +1757,7 @@ namespace LodgeiT
             catch (Exception ex)
             {
                 ErrMsg("Error: " + ex.Message);
-                throw ex;
+                throw;
             }
 #endif
             c.pop();
