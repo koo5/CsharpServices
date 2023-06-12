@@ -40,8 +40,8 @@ namespace LodgeiT
 #else
         private WeakReference<C> parent;
 #endif
-        public static C root;
-        public static C current_context;
+        public static C? root;
+        public static C? current_context;
         private string value;
         private List<C> items = new List<C>();
 
@@ -231,7 +231,7 @@ namespace LodgeiT
     }
     public class RdfSheetEntry
     {
-        public Pos _pos;
+        public Pos? _pos;
         public INode _obj;
         public RdfSheetEntry(INode obj, Pos pos)
         {
@@ -263,16 +263,16 @@ namespace LodgeiT
     {
         // the sheet currently being read or populated:
 #if !OOXML
-        private Worksheet _sheet;
+        private Worksheet? _sheet;
         Excel.Application _app;
         private readonly bool _isFreshSheet = true;
 #else
-        private IXLWorksheet _sheet;
+        private IXLWorksheet? _sheet;
         XLWorkbook _app;
 #endif
 
         private INode _sheetsGroupTemplateUri;
-        public string Alerts;
+        public string Alerts = "";
         public static TextWriter? Tw;
         
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
@@ -387,7 +387,7 @@ namespace LodgeiT
 #else
         private void ErrMsg(string msg)
         {
-            Tw.WriteLine(msg);
+            (Tw??Console.Out).WriteLine(msg);
             Alerts += msg + "\n";
         }
 
