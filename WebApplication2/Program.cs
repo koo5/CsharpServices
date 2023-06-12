@@ -22,19 +22,26 @@ if (app.Environment.IsDevelopment())
 
 RdfTemplate.Tw = Console.Out;
 
-/* called by frontend. returns either result or error. error is a text with newlines, possibly including a rendering
- of a user-centric backtrace given by t.alerts */
-app.MapPost("/xlsx2rdf", (string root, /*[FromBody] */string input_fn, string output_fn) =>
-{
-    RdfTemplate t = new RdfTemplate(new XLWorkbook(input_fn), root);
-    if (!t.ExtractSheetGroupData(""))
-        return new RpcReply (null, t.Alerts );
-    t.SerializeToFile(output_fn);
-    return new RpcReply ("ok",null );
+
+
+app.MapGet("/health", () => "ok")
+    .WithName("health")
+    .WithOpenApi();
+
+
+app.MapPost("/xlsx_to_rdf", (string root, /*[FromBody] */string input_fn, string output_fn) =>
+    {
+        RdfTemplate t = new RdfTemplate(new XLWorkbook(input_fn), root);
+        if (!t.ExtractSheetGroupData(""))
+            return new RpcReply (null, t.Alerts );
+        t.SerializeToFile(output_fn);
+        return new RpcReply ("ok",null );
     
-})
-.WithName("xlsx_to_rdf")
-.WithOpenApi();
+    })
+    .WithName("xlsx_to_rdf")
+    .WithOpenApi()
+    .WithDescription("called by frontend. returns either result or error. error is a text with newlines, possibly including a rendering of a user-centric backtrace given by t.alerts");
+
 
 
 app.Run("http://0.0.0.0:17789");
