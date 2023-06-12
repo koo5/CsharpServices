@@ -1022,7 +1022,7 @@ namespace LodgeiT
             }
 
 #else
-            double result=123;//fixme
+            decimal result=12345;//fixme
             var rng = _sheet.Cell(pos.Cell);
 
             string txt = GetCellValueAsString2(pos);
@@ -1031,7 +1031,7 @@ namespace LodgeiT
             
             try
             {
-                rng.GetDouble();
+                result = (decimal)rng.GetDouble();
             }
             catch (InvalidCastException e)
             {
@@ -1679,8 +1679,11 @@ namespace LodgeiT
         public void SerializeToFile(string fn)
         {
 
-            GZippedTriGWriter w = new GZippedTriGWriter();
-            //w.CompressionLevel = VDS.RDF.Writing.WriterCompressionLevel.High;
+            //GZippedTriGWriter w = new GZippedTriGWriter();
+            TriGWriter w = new TriGWriter();
+            w.HighSpeedModePermitted = false;
+            w.CompressionLevel = WriterCompressionLevel.High;
+            w.PrettyPrintMode = true;
             ITripleStore ts = GraphsTripleStore();
             w.Save(ts, fn);
 
