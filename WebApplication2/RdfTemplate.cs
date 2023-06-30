@@ -516,6 +516,8 @@ namespace LodgeiT
                 }
             }
 
+            // i think the distinction between_rg and g was supposed to be, g is the hard data that prolog would crunch, while rg is the metadata, presentation details, source sheet names and cell coords...
+            // note, i think, ":request" expands to .../v1/excel_request#request in both cases here:
             Assert(_rg, u(_rg, ":request"), u(_rg, "excel:has_sheet_instances"), _rg.AssertList(all_request_sheets));
             Assert(_g, u(":request"), u("l:client_version"), _g.CreateLiteralNode("3"));
             //Assert(_g, u(":request"), u("l:client_git_info"), _g.CreateLiteralNode(Properties.Resources.ResourceManager.GetObject("repo_status").ToString().Replace("\n", Environment.NewLine)));
