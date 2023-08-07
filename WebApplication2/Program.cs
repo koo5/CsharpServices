@@ -2,6 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using LodgeiT;
 using ClosedXML.Excel;
 
+using DocumentFormat.OpenXml;  
+using DocumentFormat.OpenXml.Packaging;  
+using DocumentFormat.OpenXml.Spreadsheet;  
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -43,6 +48,20 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
         app.Logger.LogInformation("INFO!");
         LoadOptions.DefaultGraphicEngine = new ClosedXML.Graphics.DefaultGraphicEngine("Noto Serif");
         
+        var openSettings = new OpenSettings()
+        {
+            RelationshipErrorHandlerFactory = package =>
+            {
+                return new UriRelationshipErrorHandler();
+            }
+        };
+        
+        using (var doc = SpreadsheetDocument.Open(rrr.input_fn, true, openSettings))
+        {
+            // todo: save as a different file (create a "fixups" directory)
+            doc.Save();
+        }
+                
         RdfTemplate t = new RdfTemplate(new XLWorkbook(rrr.input_fn), rrr.root);
         
         if (!t.ExtractSheetGroupData(""))
@@ -72,5 +91,15 @@ internal record RpcRequest(string root, string input_fn, string output_fn)
 }
 internal record RpcReply(string? result, string? error)
 {
+}
+
+
+
+public class UriRelationshipErrorHandler : RelationshipErrorHandler
+{
+    public override string Rewrite(Uri partUri, string id, string uri)
+    {
+        return "http://link-invalid.example.com";
+    }
 }
 
