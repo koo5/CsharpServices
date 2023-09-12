@@ -46,7 +46,7 @@ app.MapGet("/health", () => "ok")
 app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
     {
         app.Logger.LogInformation("INFO!");
-        LoadOptions.DefaultGraphicEngine = new ClosedXML.Graphics.DefaultGraphicEngine("Noto Serif");
+        //LoadOptions.DefaultGraphicEngine = new ClosedXML.Graphics.DefaultGraphicEngine("Noto Serif");
         
         var openSettings = new OpenSettings()
         {
