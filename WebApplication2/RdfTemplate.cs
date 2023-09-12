@@ -995,7 +995,7 @@ namespace LodgeiT
 
     
     
-    private bool ReadOptionalDecimal(Pos pos, ref INode obj)
+    	private bool ReadOptionalDecimal(Pos pos, ref INode obj)
         /*
         return true if cell is empty
         set obj and return true on successful parse	
@@ -1047,7 +1047,7 @@ namespace LodgeiT
 #endif
         } 
     
-    private bool ReadOptionalDatetime(Pos pos, ref INode obj)
+    	private bool ReadOptionalDatetime(Pos pos, ref INode obj)
         /*
         return true if cell is empty
         set obj and return true on successful parse	
@@ -1057,48 +1057,48 @@ namespace LodgeiT
         {
 #if !OOXML
 
-        Excel.Range rng = _sheet.Range[pos.Cell];
+			Excel.Range rng = _sheet.Range[pos.Cell];
 
-        string txt =  rng.Text;
-        txt = txt.Trim();
-        if (txt == "")
-            return true;
+			string txt =  rng.Text;
+			txt = txt.Trim();
+			if (txt == "")
+				return true;
 
-        // returns DateTime.MinValue on unsuccesful parse
-        DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
-        
-        if (contents != DateTime.MinValue)
-            obj = contents.Date.ToLiteral(_g);
-        else
-        {
-            string contents_str = GetCellValueAsString2(pos); 
-            obj = contents_str.ToLiteral(_g);
-        }
-        return true;
+			// returns DateTime.MinValue on unsuccesful parse
+			DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
+
+			if (contents != DateTime.MinValue)
+				obj = contents.Date.ToLiteral(_g);
+			else
+			{
+				string contents_str = GetCellValueAsString2(pos);
+				obj = contents_str.ToLiteral(_g);
+			}
+			return true;
 #else
-        
-        var rng = _sheet.Cell(pos.Cell);
 
-        string txt = GetCellValueAsString2(pos);
-        if (txt == "")
-            return true;
+			var rng = _sheet.Cell(pos.Cell);
 
-        DateTime result;
+			string txt = GetCellValueAsString2(pos);
+			if (txt == "")
+				return true;
 
-        try
-        {
-            result = rng.GetDateTime();
-        }
-        catch (InvalidCastException e)
-        {
-            obj = txt.ToLiteral(_g);
-            return true;
-        }
+			DateTime result;
 
-        obj = result.ToLiteral(_g);
-        return true;
+			try
+			{
+				result = rng.GetDateTime();
+			}
+			catch (InvalidCastException e)
+			{
+				obj = txt.ToLiteral(_g);
+				return true;
+			}
+
+			obj = result.ToLiteral(_g);
+			return true;
 #endif
-    }
+	    }
     
     
         public string GetCellValueAsString2(Pos pos)
