@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="d3f9964f-bce1-45ca-97bb-6ae9a8ee400b" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/WebApplication2/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication2/Program.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/WebApplication2/RdfTemplate.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WebApplication2/RdfTemplate.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
