@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 //using ClosedXML.Graphics;
@@ -353,6 +354,9 @@ namespace LodgeiT
 #endif
         private void Init()
         {
+			C.root = null;
+			C.current_context = null;
+
             _g = new Graph();
             _g.NamespaceMap.AddNamespace("l", UriFactory.Create("https://rdf.lodgeit.net.au/v1/request#"));
             _g.NamespaceMap.AddNamespace("excel", UriFactory.Create("https://rdf.lodgeit.net.au/v1/excel#"));
@@ -590,7 +594,6 @@ namespace LodgeiT
         }
         public bool ExtractSheetGroupData(string UpdatedRdfTemplates = "")
         {
-            C.root = null;
             push("extract sheet group data");
             try
             {
@@ -1052,7 +1055,7 @@ namespace LodgeiT
         return true if cell is empty
         set obj and return true on successful parse	
         on parse error, return true and assert obj as a string(!)
-         - if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side?
+         - if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side? I think it could make sense for some inputs, where some items maybe don't need to be read at all, like when doing at-cost reporting and ignoring unit values sheet. Also, while it could be added, currently there isnt a mechanism for xml2rdf to report back errors, so, we rely on prolog catching the fact that an expected date/3 term is actually a string, and reporting it.  
         */
         {
 #if !OOXML
@@ -1083,16 +1086,19 @@ namespace LodgeiT
 			if (txt == "")
 				return true;
 
-			DateTime result;
+			DateTime result = DateTime.MinValue;
 
 			try
 			{
 				result = rng.GetDateTime();
 			}
-			catch (InvalidCastException e)
+			catch (Exception e) when (e is InvalidCastException || e is System.FormatException)
 			{
-				obj = txt.ToLiteral(_g);
-				return true;
+				if (!ConvertDateStringToDateTime(txt, ref result))
+				{
+					obj = txt.ToLiteral(_g);
+					return true;
+				}
 			}
 
 			obj = result.ToLiteral(_g);
@@ -1100,6 +1106,19 @@ namespace LodgeiT
 #endif
 	    }
     
+    	public bool ConvertDateStringToDateTime(string txt, ref DateTime result)
+    	{
+    		// https://learn.microsoft.com/en-us/dotnet/api/system.datetime.tryparse?view=net-7.0
+    		// Console.WriteLine("Attempting to parse strings using {0} culture.", CultureInfo.CurrentCulture.Name);
+    		if (DateTime.TryParse(txt, out result))
+    			return true;
+
+    		// https://learn.microsoft.com/en-us/dotnet/api/system.datetime.tryparseexact?view=net-7.0
+            string[] formats = new string[] { "dd/MM/yyyy", "dd/MM/yy", "dd/M/yyyy", "dd/M/yy", "d/MM/yyyy", "d/MM/yy", "d/M/yyyy", "d/M/yy", "d MMMM yyyy", "dd MMMM yyyy", "MMMM dd, yyyy", "MMMM d, yyyy", "yyyy-MM-dd", "dd.MM.yyyy" };
+            CultureInfo provider = CultureInfo.InvariantCulture;
+            return DateTime.TryParseExact(txt, formats, provider, DateTimeStyles.None, out result);
+    	}
+      
     
         public string GetCellValueAsString2(Pos pos)
         {

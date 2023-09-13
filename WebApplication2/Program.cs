@@ -67,11 +67,7 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
         if (!t.ExtractSheetGroupData(""))
             return new RpcReply (null, t.Alerts );
         t.SerializeToFile(rrr.output_fn);
-        
-        // refactor: this is a hack to reset the trace variables
-        C.root = null;
-        C.current_context = null;
-        
+                
         return new RpcReply ("ok",null );
     
     })
