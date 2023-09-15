@@ -1055,7 +1055,7 @@ namespace LodgeiT
         return true if cell is empty
         set obj and return true on successful parse	
         on parse error, return true and assert obj as a string(!)
-         - if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side? I think it could make sense for some inputs, where some items maybe don't need to be read at all, like when doing at-cost reporting and ignoring unit values sheet. Also, while it could be added, currently there isnt a mechanism for xml2rdf to report back errors, so, we rely on prolog catching the fact that an expected date/3 term is actually a string, and reporting it.  
+         - if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side? I think it could make sense for some inputs, where some items maybe don't need to be read at all, like when doing at-cost reporting and ignoring unit values sheet. Also, while it could be added, currently there isnt a mechanism for xml2rdf to report back errors <<needs to be added soon anyway>>, so, we rely on prolog catching the fact that an expected date/3 term is actually a string, and reporting it.  
         */
         {
 #if !OOXML
@@ -1109,14 +1109,29 @@ namespace LodgeiT
     	public bool ConvertDateStringToDateTime(string txt, ref DateTime result)
     	{
     		// https://learn.microsoft.com/en-us/dotnet/api/system.datetime.tryparse?view=net-7.0
-    		// Console.WriteLine("Attempting to parse strings using {0} culture.", CultureInfo.CurrentCulture.Name);
+    		Console.WriteLine("Attempting to parse strings using {0} culture.", CultureInfo.CurrentCulture.DisplayName);
+			/*
     		if (DateTime.TryParse(txt, out result))
     			return true;
+    		*/
 
     		// https://learn.microsoft.com/en-us/dotnet/api/system.datetime.tryparseexact?view=net-7.0
-            string[] formats = new string[] { "dd/MM/yyyy", "dd/MM/yy", "dd/M/yyyy", "dd/M/yy", "d/MM/yyyy", "d/MM/yy", "d/M/yyyy", "d/M/yy", "d MMMM yyyy", "dd MMMM yyyy", "MMMM dd, yyyy", "MMMM d, yyyy", "yyyy-MM-dd", "dd.MM.yyyy" };
+    		
+            //string[] formats = new string[] { "dd/MM/yyyy", "dd/MM/yy", "dd/M/yyyy", "dd/M/yy", "d/MM/yyyy", "d/MM/yy", "d/M/yyyy", "d/M/yy", "d MMMM yyyy", "dd MMMM yyyy", "MMMM dd, yyyy", "MMMM d, yyyy", "yyyy-MM-dd", "dd.MM.yyyy" };
+            string[] formats = new string[] { "dd/MM/yyyy", "dd/M/yyyy", "d/MM/yyyy", "d/M/yyyy", "d MMMM yyyy", "dd MMMM yyyy", "yyyy-MM-dd", "dd.MM.yyyy" };
             CultureInfo provider = CultureInfo.InvariantCulture;
-            return DateTime.TryParseExact(txt, formats, provider, DateTimeStyles.None, out result);
+            foreach(string format in formats)
+			{
+	            //Console.WriteLine("Attempting to parse strings using formats: {0}.", formats);
+	            if (DateTime.TryParseExact(txt, formats, provider, DateTimeStyles.None, out result))
+	            {
+	            	Console.WriteLine("parsed date: {0} with format: {1}", txt, format);
+	            	return true;
+	            }
+
+			}
+			Console.WriteLine("failed to parse date: {0}", txt);
+			return false;
     	}
       
     
