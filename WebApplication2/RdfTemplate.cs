@@ -1078,40 +1078,65 @@ namespace LodgeiT
 				obj = contents_str.ToLiteral(_g);
 			}
 			return true;
+			
+			
 #else
 			
+			obj = null;
 			IXLCell cell = _sheet.Cell(pos.Cell);		
-			
 			string txt = "";
-			
-			/* the problem now will be that when TryGetValue encounters a genuine double(date), it will stringize it according to some made-up locale */
-			cell.TryGetValue(out txt);
-			
-			 txt = txt.Trim();
+			txt = cell.GetString();
+			txt = txt.Trim();
 			if (txt.Length == 0)
 				return true;
-
+			Console.WriteLine("GetString: {0}", txt);
 			DateTime result = DateTime.MinValue;
 			
-			/*XLCellValue cellValue = cell.Value;
-			
-			if (cellValue.TryConvert(ref result))
+
+			if (cell.DataType == XLDataType.DateTime)
 			{
-				obj = result.ToLiteral(_g);
-			}
-			else*/ if (ConvertDateStringToDateTime(txt, ref result))
-			{
-				obj = result.ToLiteral(_g);
+				//try
+				{
+					result = cell.GetDateTime();
+					Console.WriteLine("GetDateTime {0} as {1}, that is, mm {2} dd {3}", txt, result, result.Month, result.Day);
+					obj = result.ToLiteral(_g);
+				}
+				/*catch (Exception e) when (e is InvalidCastException || e is System.FormatException)
+				{
+					Console.WriteLine("{0}", e.Message);
+				}*/
 			}
 			else
+			{
+				if (ConvertDateStringToDateTime(txt, ref result))
+				{
+					obj = result.ToLiteral(_g);
+				}
+			}
+			
+			if (obj == null)
 				obj = txt.ToLiteral(_g);
 
 			Console.WriteLine("ReadOptionalDatetime {0} as {1} -> {2}", txt, result, obj);		
 			ILiteralNode lit = (ILiteralNode)obj;
 			Console.WriteLine("{0}", lit.DataType);
-			Console.WriteLine("{0}", lit.Value);
+			Console.WriteLine("{0}", lit.Value);			
+			return true;
+
+
+
+			/*
+			this doesn't exist
+			XLCellValue cellValue = cell.Value;
 			
-			return true;			
+			if (cellValue.TryConvert(ref result))
+			{
+				Console.WriteLine("TryConvert {0}", result);
+				obj = result.ToLiteral(_g);
+			}
+			
+			*/
+
 
 			/*
 			try
@@ -1163,6 +1188,14 @@ namespace LodgeiT
 			""" 
 						
 			*/
+			/* the problem now will be that when TryGetValue encounters a genuine double(date), it will stringize it according to some made-up locale */
+			//cell.TryGetValue(out txt);
+			/*
+			    Return cell’s value represented as a string. Doesn’t use cell’s formatting or style.
+			    really? it seems to use the formatting, at least for dates.
+			*/
+
+			/* lies lies lies lies */
 
 #endif
 	    }
