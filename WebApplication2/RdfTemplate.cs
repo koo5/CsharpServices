@@ -1079,18 +1079,59 @@ namespace LodgeiT
 			}
 			return true;
 #else
-
-			var rng = _sheet.Cell(pos.Cell);
-
-			string txt = GetCellValueAsString2(pos);
-			if (txt == "")
+			
+			IXLCell cell = _sheet.Cell(pos.Cell);		
+			
+			string txt = "";
+			
+			/* the problem now will be that when TryGetValue encounters a genuine double(date), it will stringize it according to some made-up locale */
+			cell.TryGetValue(out txt);
+			
+			 txt = txt.Trim();
+			if (txt.Length == 0)
 				return true;
 
 			DateTime result = DateTime.MinValue;
+			
+			/*XLCellValue cellValue = cell.Value;
+			
+			if (cellValue.TryConvert(ref result))
+			{
+				obj = result.ToLiteral(_g);
+			}
+			else*/ if (ConvertDateStringToDateTime(txt, ref result))
+			{
+				obj = result.ToLiteral(_g);
+			}
+			else
+				obj = txt.ToLiteral(_g);
 
+			Console.WriteLine("ReadOptionalDatetime {0} as {1} -> {2}", txt, result, obj);		
+			ILiteralNode lit = (ILiteralNode)obj;
+			Console.WriteLine("{0}", lit.DataType);
+			Console.WriteLine("{0}", lit.Value);
+			
+			return true;			
+
+			/*
 			try
 			{
+			
+//			https://docs.closedxml.io/en/latest/api/index.html#interface-ClosedXML.Excel.IXLCell
+//			
+//			DateTime GetDateTime ()
+//            
+//                Gets the cell’s value as a DateTime.
+//            
+//                Shortcut for Value.GetDateTime()
+//            
+//                Throws InvalidCastException
+//            
+//                    If the value of the cell is not a DateTime.		
+			
 				result = rng.GetDateTime();
+				Console.WriteLine("GetDateTime {0} as {1}", txt, result);
+				Console.WriteLine("mm {0} dd {1}", result.Month, result.Day);
 			}
 			catch (Exception e) when (e is InvalidCastException || e is System.FormatException)
 			{
@@ -1101,8 +1142,28 @@ namespace LodgeiT
 				}
 			}
 
-			obj = result.ToLiteral(_g);
-			return true;
+			^^^ in reality, GetDateTime returns a datetime with months and days swapped, which is strange, given that it's not supposed to parse anything, it's just supposed to get the possible numerical value and reinterpret it as a datetime.
+			
+			https://github.com/ClosedXML/ClosedXML/issues?q=GetDateTime yada yada yada
+			
+			Note that we're currently on DocumentPartner.ClosedXML Version="0.96.18-prerelease". 
+			
+			In future, if we get ClosedXML to open openoffice files, we can go back to ClosedXML with some improvements: 
+			from ClosedXML 0.100 release notes:
+			
+			Since datetime and duration are basically masqaraded number, you can use XLCellValue.GetUnifiedNumber() to get a backing number, no matter if the type is number, datetime and duration.
+			
+			ClosedXML used to guess a data type from a value. It caused all sort of unexpected behaviors (e.g. text value Z12.31 has been converted to date time 12/30/2022 19:00). Date caused most problems, but other sometimes too (e.g. text "Infinity" was detected as a number).
+            
+            This behavior was likely intended to emulate how user interacts with an Excel. Excel guesses type, but only if the cell Number Format is set to "General" (e.g. if NumberFormat is set to Text, there is no conversion even in Excel). Application is not human and doesn't have to interact with xlsx in the same way.
+            
+            This behavior was removed. Type that is set is the type that will be returned. Note that although XLCellValue can represent date and time as a different types, in reality that is only presentation logic for user. They are both just serial date time numbers.
+
+			"""
+			""" 
+						
+			*/
+
 #endif
 	    }
     
