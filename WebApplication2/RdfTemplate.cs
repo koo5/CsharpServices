@@ -1302,7 +1302,8 @@ namespace LodgeiT
             }
             try
             {
-                return u(contents);
+                // return u(contents); // invalid URI: https://1drv.ms/u/s!AuWtwWxCPFt7ge4cu0bdA_nQuPH3ig?e=HIYhQl
+                return contents.ToLiteral(_g);
             }
             catch (VDS.RDF.RdfException)
             {
