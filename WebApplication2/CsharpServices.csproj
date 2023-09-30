@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.101.0" />
+    <PackageReference Include="DocumentPartner.ClosedXML" Version="0.96.18-prerelease" />
     <PackageReference Include="dotNetRdf" Version="2.7.5" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Tracing" Version="5.2.9" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.5" />

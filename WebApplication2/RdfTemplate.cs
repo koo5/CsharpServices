@@ -1,7 +1,8 @@
-﻿using System.Text;
+﻿using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
-using ClosedXML.Graphics;
+//using ClosedXML.Graphics;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using VDS.RDF.Writing;
@@ -353,6 +354,9 @@ namespace LodgeiT
 #endif
         private void Init()
         {
+			C.root = null;
+			C.current_context = null;
+
             _g = new Graph();
             _g.NamespaceMap.AddNamespace("l", UriFactory.Create("https://rdf.lodgeit.net.au/v1/request#"));
             _g.NamespaceMap.AddNamespace("excel", UriFactory.Create("https://rdf.lodgeit.net.au/v1/excel#"));
@@ -590,7 +594,6 @@ namespace LodgeiT
         }
         public bool ExtractSheetGroupData(string UpdatedRdfTemplates = "")
         {
-            C.root = null;
             push("extract sheet group data");
             try
             {
@@ -995,7 +998,7 @@ namespace LodgeiT
 
     
     
-    private bool ReadOptionalDecimal(Pos pos, ref INode obj)
+    	private bool ReadOptionalDecimal(Pos pos, ref INode obj)
         /*
         return true if cell is empty
         set obj and return true on successful parse	
@@ -1047,59 +1050,184 @@ namespace LodgeiT
 #endif
         } 
     
-    private bool ReadOptionalDatetime(Pos pos, ref INode obj)
+    	private bool ReadOptionalDatetime(Pos pos, ref INode obj)
         /*
         return true if cell is empty
         set obj and return true on successful parse	
         on parse error, return true and assert obj as a string(!)
-         - if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side?
+         - if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side? I think it could make sense for some inputs, where some items maybe don't need to be read at all, like when doing at-cost reporting and ignoring unit values sheet. Also, while it could be added, currently there isnt a mechanism for xml2rdf to report back errors <<needs to be added soon anyway>>, so, we rely on prolog catching the fact that an expected date/3 term is actually a string, and reporting it.  
         */
         {
 #if !OOXML
 
-        Excel.Range rng = _sheet.Range[pos.Cell];
+			Excel.Range rng = _sheet.Range[pos.Cell];
 
-        string txt =  rng.Text;
-        txt = txt.Trim();
-        if (txt == "")
-            return true;
+			string txt =  rng.Text;
+			txt = txt.Trim();
+			if (txt == "")
+				return true;
 
-        // returns DateTime.MinValue on unsuccesful parse
-        DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
-        
-        if (contents != DateTime.MinValue)
-            obj = contents.Date.ToLiteral(_g);
-        else
-        {
-            string contents_str = GetCellValueAsString2(pos); 
-            obj = contents_str.ToLiteral(_g);
-        }
-        return true;
+			// returns DateTime.MinValue on unsuccesful parse
+			DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
+
+			if (contents != DateTime.MinValue)
+				obj = contents.Date.ToLiteral(_g);
+			else
+			{
+				string contents_str = GetCellValueAsString2(pos);
+				obj = contents_str.ToLiteral(_g);
+			}
+			return true;
+			
+			
 #else
-        
-        var rng = _sheet.Cell(pos.Cell);
+			
+			obj = null;
+			IXLCell cell = _sheet.Cell(pos.Cell);		
+			string txt = "";
+			txt = cell.GetString();
+			txt = txt.Trim();
+			if (txt.Length == 0)
+				return true;
+			Console.WriteLine("GetString: {0}", txt);
+			DateTime result = DateTime.MinValue;
+			
 
-        string txt = GetCellValueAsString2(pos);
-        if (txt == "")
-            return true;
+			if (cell.DataType == XLDataType.DateTime)
+			{
+				//try
+				{
+					result = cell.GetDateTime();
+					Console.WriteLine("GetDateTime {0} as {1}, that is, mm {2} dd {3}", txt, result, result.Month, result.Day);
+					obj = result.ToLiteral(_g);
+				}
+				/*catch (Exception e) when (e is InvalidCastException || e is System.FormatException)
+				{
+					Console.WriteLine("{0}", e.Message);
+				}*/
+			}
+			else
+			{
+				if (ConvertDateStringToDateTime(txt, ref result))
+				{
+					obj = result.ToLiteral(_g);
+				}
+			}
+			
+			if (obj == null)
+				obj = txt.ToLiteral(_g);
 
-        DateTime result;
+			Console.WriteLine("ReadOptionalDatetime {0} as {1} -> {2}", txt, result, obj);		
+			ILiteralNode lit = (ILiteralNode)obj;
+			Console.WriteLine("{0}", lit.DataType);
+			Console.WriteLine("{0}", lit.Value);			
+			return true;
 
-        try
-        {
-            result = rng.GetDateTime();
-        }
-        catch (InvalidCastException e)
-        {
-            obj = txt.ToLiteral(_g);
-            return true;
-        }
 
-        obj = result.ToLiteral(_g);
-        return true;
+
+			/*
+			this doesn't exist
+			XLCellValue cellValue = cell.Value;
+			
+			if (cellValue.TryConvert(ref result))
+			{
+				Console.WriteLine("TryConvert {0}", result);
+				obj = result.ToLiteral(_g);
+			}
+			
+			*/
+
+
+			/*
+			try
+			{
+			
+//			https://docs.closedxml.io/en/latest/api/index.html#interface-ClosedXML.Excel.IXLCell
+//			
+//			DateTime GetDateTime ()
+//            
+//                Gets the cell’s value as a DateTime.
+//            
+//                Shortcut for Value.GetDateTime()
+//            
+//                Throws InvalidCastException
+//            
+//                    If the value of the cell is not a DateTime.		
+			
+				result = rng.GetDateTime();
+				Console.WriteLine("GetDateTime {0} as {1}", txt, result);
+				Console.WriteLine("mm {0} dd {1}", result.Month, result.Day);
+			}
+			catch (Exception e) when (e is InvalidCastException || e is System.FormatException)
+			{
+				if (!ConvertDateStringToDateTime(txt, ref result))
+				{
+					obj = txt.ToLiteral(_g);
+					return true;
+				}
+			}
+
+			^^^ in reality, GetDateTime returns a datetime with months and days swapped, which is strange, given that it's not supposed to parse anything, it's just supposed to get the possible numerical value and reinterpret it as a datetime.
+			
+			https://github.com/ClosedXML/ClosedXML/issues?q=GetDateTime yada yada yada
+			
+			Note that we're currently on DocumentPartner.ClosedXML Version="0.96.18-prerelease". 
+			
+			In future, if we get ClosedXML to open openoffice files, we can go back to ClosedXML with some improvements: 
+			from ClosedXML 0.100 release notes:
+			
+			Since datetime and duration are basically masqaraded number, you can use XLCellValue.GetUnifiedNumber() to get a backing number, no matter if the type is number, datetime and duration.
+			
+			ClosedXML used to guess a data type from a value. It caused all sort of unexpected behaviors (e.g. text value Z12.31 has been converted to date time 12/30/2022 19:00). Date caused most problems, but other sometimes too (e.g. text "Infinity" was detected as a number).
+            
+            This behavior was likely intended to emulate how user interacts with an Excel. Excel guesses type, but only if the cell Number Format is set to "General" (e.g. if NumberFormat is set to Text, there is no conversion even in Excel). Application is not human and doesn't have to interact with xlsx in the same way.
+            
+            This behavior was removed. Type that is set is the type that will be returned. Note that although XLCellValue can represent date and time as a different types, in reality that is only presentation logic for user. They are both just serial date time numbers.
+
+			"""
+			""" 
+						
+			*/
+			/* the problem now will be that when TryGetValue encounters a genuine double(date), it will stringize it according to some made-up locale */
+			//cell.TryGetValue(out txt);
+			/*
+			    Return cell’s value represented as a string. Doesn’t use cell’s formatting or style.
+			    really? it seems to use the formatting, at least for dates.
+			*/
+
+			/* lies lies lies lies */
+
 #endif
-    }
+	    }
     
+    	public bool ConvertDateStringToDateTime(string txt, ref DateTime result)
+    	{
+    		// https://learn.microsoft.com/en-us/dotnet/api/system.datetime.tryparse?view=net-7.0
+    		Console.WriteLine("Attempting to parse strings using {0} culture.", CultureInfo.CurrentCulture.DisplayName);
+			/*
+    		if (DateTime.TryParse(txt, out result))
+    			return true;
+    		*/
+
+    		// https://learn.microsoft.com/en-us/dotnet/api/system.datetime.tryparseexact?view=net-7.0
+    		
+            //string[] formats = new string[] { "dd/MM/yyyy", "dd/MM/yy", "dd/M/yyyy", "dd/M/yy", "d/MM/yyyy", "d/MM/yy", "d/M/yyyy", "d/M/yy", "d MMMM yyyy", "dd MMMM yyyy", "MMMM dd, yyyy", "MMMM d, yyyy", "yyyy-MM-dd", "dd.MM.yyyy" };
+            string[] formats = new string[] { "dd/MM/yyyy", "dd/M/yyyy", "d/MM/yyyy", "d/M/yyyy", "d MMMM yyyy", "dd MMMM yyyy", "yyyy-MM-dd", "dd.MM.yyyy" };
+            CultureInfo provider = CultureInfo.InvariantCulture;
+            foreach(string format in formats)
+			{
+	            //Console.WriteLine("Attempting to parse strings using formats: {0}.", formats);
+	            if (DateTime.TryParseExact(txt, formats, provider, DateTimeStyles.None, out result))
+	            {
+	            	Console.WriteLine("parsed date: {0} with format: {1}", txt, format);
+	            	return true;
+	            }
+
+			}
+			Console.WriteLine("failed to parse date: {0}", txt);
+			return false;
+    	}
+      
     
         public string GetCellValueAsString2(Pos pos)
         {
@@ -1174,7 +1302,8 @@ namespace LodgeiT
             }
             try
             {
-                return u(contents);
+                // return u(contents); // invalid URI: https://1drv.ms/u/s!AuWtwWxCPFt7ge4cu0bdA_nQuPH3ig?e=HIYhQl
+                return contents.ToLiteral(_g);
             }
             catch (VDS.RDF.RdfException)
             {
