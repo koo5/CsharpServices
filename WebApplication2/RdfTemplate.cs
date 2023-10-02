@@ -909,20 +909,6 @@ namespace LodgeiT
                 if (!ReadOptionalDecimal(pos, ref obj))
                     return false;
             }
-            else if (type.Equals(u("xsd:integer")))
-            {
-                if (!ReadOptionalInt(pos, ref obj))
-                    return false;
-            }
-            else if (type.Equals(u("xsd:dateTime")))
-            {
-                if (!ReadOptionalDatetime(pos, ref obj))
-                    return false;
-            }
-            else if (type.Equals(u("excel:uri")))
-            {
-                obj = GetUriObj(pos, field); //possibly throws
-            }
             else if (type.Equals(u("xsd:string")))
             {
                 string contents = null;
@@ -931,6 +917,25 @@ namespace LodgeiT
                     obj = contents.ToLiteral(_g);
                 else if (status == CellReadingResult.Error) // todo: maybe added for end of sheet data, but i'm not sure it makes sense / really happens
                     return false;
+            }
+            else if (type.Equals(u("xsd:date")))
+            {
+                if (!ReadOptionalDate(pos, ref obj))
+                    return false;
+            }
+            else if (type.Equals(u("xsd:dateTime")))
+            {
+                if (!ReadOptionalDatetime(pos, ref obj))
+                    return false;
+            }
+            else if (type.Equals(u("xsd:integer")))
+            {
+                if (!ReadOptionalInt(pos, ref obj))
+                    return false;
+            }
+            else if (type.Equals(u("excel:uri")))
+            {
+                obj = GetUriObj(pos, field); //possibly throws
             }
             else
                 throw new Exception("RDF template error: excel:type not recognized: " + type.ToString());
@@ -1199,7 +1204,84 @@ namespace LodgeiT
 
 #endif
 	    }
-    
+
+
+    	private bool ReadOptionalDate(Pos pos, ref INode obj)
+        /*
+        return true if cell is empty
+        set obj and return true on successful parse
+        on parse error, return true and assert obj as a string(!)
+         - if there was text but it couldn't be parsed, pass it on as string // do we take advantage of this anywhere on the prolog side? I think it could make sense for some inputs, where some items maybe don't need to be read at all, like when doing at-cost reporting and ignoring unit values sheet. Also, while it could be added, currently there isnt a mechanism for xml2rdf to report back errors <<needs to be added soon anyway>>, so, we rely on prolog catching the fact that an expected date/3 term is actually a string, and reporting it.
+        */
+        {
+#if !OOXML
+
+			Excel.Range rng = _sheet.Range[pos.Cell];
+
+			string txt =  rng.Text;
+			txt = txt.Trim();
+			if (txt == "")
+				return true;
+
+			// returns DateTime.MinValue on unsuccesful parse
+			DateTime contents = ExporttoXMLBase.GetCellAsDate(_sheet, pos.Cell);
+
+			if (contents != DateTime.MinValue)
+				obj = contents.Date.ToLiteral(_g);
+			else
+			{
+				string contents_str = GetCellValueAsString2(pos);
+				obj = contents_str.ToLiteral(_g);
+			}
+			return true;
+
+
+#else
+
+			obj = null;
+			IXLCell cell = _sheet.Cell(pos.Cell);
+			string txt = "";
+			txt = cell.GetString();
+			txt = txt.Trim();
+			if (txt.Length == 0)
+				return true;
+			Console.WriteLine("GetString: {0}", txt);
+			DateTime result = DateTime.MinValue;
+
+
+			if (cell.DataType == XLDataType.DateTime)
+			{
+				//try
+				{
+					result = cell.GetDateTime();
+					Console.WriteLine("GetDateTime {0} as {1}, that is, mm {2} dd {3}", txt, result, result.Month, result.Day);
+					obj = new VDS.RDF.Nodes.DateNode(_g, result);
+				}
+				/*catch (Exception e) when (e is InvalidCastException || e is System.FormatException)
+				{
+					Console.WriteLine("{0}", e.Message);
+				}*/
+			}
+			else
+			{
+				if (ConvertDateStringToDateTime(txt, ref result))
+				{
+					obj = new VDS.RDF.Nodes.DateNode(_g, result);
+				}
+			}
+
+			if (obj == null)
+				obj = txt.ToLiteral(_g);
+
+			Console.WriteLine("ReadOptionalDate {0} as {1} -> {2}", txt, result, obj);
+			ILiteralNode lit = (ILiteralNode)obj;
+			Console.WriteLine("{0}", lit.DataType);
+			Console.WriteLine("{0}", lit.Value);
+			return true;
+#endif
+	    }
+
+
     	public bool ConvertDateStringToDateTime(string txt, ref DateTime result)
     	{
     		// https://learn.microsoft.com/en-us/dotnet/api/system.datetime.tryparse?view=net-7.0
