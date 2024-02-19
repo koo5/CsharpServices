@@ -67,6 +67,7 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
         if (!t.ExtractSheetGroupData(""))
             return new RpcReply (null, t.Alerts );
         t.SerializeToFile(rrr.output_fn);
+        app.Logger.LogInformation("wrote " + rrr.output_fn);
                 
         return new RpcReply ("ok",null );
     
