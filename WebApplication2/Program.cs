@@ -56,13 +56,23 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
             }
         };
         
-        using (var doc = SpreadsheetDocument.Open(rrr.input_fn, true, openSettings))
+        File.Copy(rrr.input_fn, rrr.input_fn+"-fixup.xlsx", true);
+        
+        using (var doc = SpreadsheetDocument.Open(rrr.input_fn+"-fixup.xlsx", true, openSettings))
         {
-            // todo: save as a different file (create a "fixups" directory)
             doc.Save();
         }
-                
-        RdfTemplate t = new RdfTemplate(new XLWorkbook(rrr.input_fn), rrr.root);
+        
+       
+        var w = new XLWorkbook(rrr.input_fn+"-fixup.xlsx");
+		
+		if (w == null)
+		{
+			return new RpcReply (null, "failed to resave file");
+		}
+        
+        RdfTemplate t = null;      
+		t = new RdfTemplate(w, new Uri(rrr.root));	
         
         if (!t.ExtractSheetGroupData(""))
             return new RpcReply (null, t.Alerts );

@@ -351,6 +351,13 @@ namespace LodgeiT
             _sheetsGroupTemplateUri = u(sheetsTemplateQName);
         }
 
+        public RdfTemplate(XLWorkbook app, Uri sheetsTemplateUri)
+        {
+            _app = app;
+            Init();
+            _sheetsGroupTemplateUri = _g.CreateUriNode(sheetsTemplateUri);
+        }
+
 #endif
         private void Init()
         {
