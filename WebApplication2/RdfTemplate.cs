@@ -344,6 +344,12 @@ namespace LodgeiT
 
 #else
 
+        public RdfTemplate(XLWorkbook app)
+        {
+            _app = app;
+            Init();
+        }
+
         public RdfTemplate(XLWorkbook app, string sheetsTemplateQName)
         {
             _app = app;
@@ -652,6 +658,7 @@ namespace LodgeiT
         {
             LoadRdf(data);
             var instances = GetSubjects(u("excel:is_result_sheet"), true.ToLiteral(_g));
+            //todo: order by excel:sheet_instance_has_sheet_name
             DisplaySheets(instances, result_sheet_handling);
         }
 

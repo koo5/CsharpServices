@@ -88,6 +88,31 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
 
 
 
+app.MapPost("/rdf_to_xlsx", ([FromBody] RpcRequest rrr) =>
+    {
+        app.Logger.LogDebug("test DEBUG from rdf_to_xlsx");
+        app.Logger.LogInformation("test INFO from rdf_to_xlsx");
+        app.Logger.LogWarning("test WARNING from rdf_to_xlsx");
+
+        var w = new XLWorkbook("result.xlsx");
+
+        RdfTemplate t = null;
+		t = new RdfTemplate(w, new Uri(rrr.root));
+
+        if (!t.ExtractSheetGroupData(""))
+            return new RpcReply (null, t.Alerts );
+        t.SerializeToFile(rrr.output_fn);
+        app.Logger.LogInformation("wrote " + rrr.output_fn);
+
+        return new RpcReply ("ok",null );
+
+    })
+    .WithName("rdf_to_xlsx")
+    .WithOpenApi();
+
+
+
+
 app.Run("http://0.0.0.0:17789");
 
 
