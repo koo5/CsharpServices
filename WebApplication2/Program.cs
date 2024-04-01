@@ -95,15 +95,8 @@ app.MapPost("/rdf_to_xlsx", ([FromBody] RpcRequest rrr) =>
         app.Logger.LogWarning("test WARNING from rdf_to_xlsx");
 
         var w = new XLWorkbook("result.xlsx");
-
-        RdfTemplate t = null;
-		t = new RdfTemplate(w, new Uri(rrr.root));
-
-        if (!t.ExtractSheetGroupData(""))
-            return new RpcReply (null, t.Alerts );
-        t.SerializeToFile(rrr.output_fn);
-        app.Logger.LogInformation("wrote " + rrr.output_fn);
-
+        RdfTemplate t = new RdfTemplate(w);
+		List<string> sets = RdfTemplate.AvailableSheetSets(rrr.rdf_file)
         return new RpcReply ("ok",null );
 
     })

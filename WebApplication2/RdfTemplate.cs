@@ -364,6 +364,12 @@ namespace LodgeiT
             _sheetsGroupTemplateUri = _g.CreateUriNode(sheetsTemplateUri);
         }
 
+        public RdfTemplate(XLWorkbook app)
+        {
+            _app = app;
+            Init();
+        }
+
 #endif
         private void Init()
         {
@@ -428,6 +434,7 @@ namespace LodgeiT
             c.pop();
             return result;
         }
+
         public UriLabelPairList ExampleSheetSets(string rdf_templates)
         {
             LoadTemplates(rdf_templates);
