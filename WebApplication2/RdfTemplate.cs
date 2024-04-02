@@ -261,7 +261,7 @@ namespace LodgeiT
     /// construct, call one of: GenerateTemplate, ExtractSheetGroupData or DisplayResponse, and dispose
     /// 
     /// </summary>
-    public class RdfTemplate// : TemplateGenerator
+    public class RdfTemplate
     {
         // the sheet currently being read or populated:
 #if !OOXML
@@ -1654,61 +1654,65 @@ namespace LodgeiT
         }
 
 #if !OOXML
-        IXCellValue Cell(Pos pos)
-        {
-            return _sheet.Cell(pos.Cell);
-        }
-#else
         Excel.Range Cell(Pos pos)
 		{
 			return _sheet.Range[pos.Cell];
 		}
+#else
+        IXLCell Cell(Pos pos)
+        {
+            return _sheet.Cell(pos.Cell);
+        }
 #endif
         void WriteDate(Pos pos, DateTime dt)
         {
-            var rng = _sheet.Range[pos.Cell];
+            var rng = Cell(pos);
             //rng.NumberFormat = "dd/mm/yyyy";
             rng.Value = dt;
             Debug.WriteLine(_sheet.Name + " " + pos.Cell + " WriteDate:" + dt);
         }
         void WriteDecimal(Pos pos, Decimal d)
         {
-            var rng = _sheet.Range[pos.Cell];
+            var rng = Cell(pos);
+#if !OOXML
             rng.NumberFormat = "0.00";
+#else
+			rng.Style.NumberFormat.Format = "0.00";
+#endif
             rng.Value = d;
             Debug.WriteLine(_sheet.Name + " " + pos.Cell + " WriteDecimal:" + d);
         }
         void WriteInteger(Pos pos, long i)
         {
-            var rng = _sheet.Range[pos.Cell];
+            var rng = Cell(pos);
             rng.Value = i;
             Debug.WriteLine(_sheet.Name + " " + pos.Cell + " WriteInteger:" + i);
         }
         void WriteString(Pos pos, String s)
         {
-            var rng = _sheet.Range[pos.Cell];
+            var rng = Cell(pos);
             rng.Value = s;
             Debug.WriteLine(_sheet.Name + " " + pos.Cell + " WriteString:" + s);
         }
 
         void SetCellFormat(Pos pos, String format)
         {
-            var rng = _sheet.Range[pos.Cell];
-            rng.NumberFormat = format;
+            var rng = Cell(pos);
+            rng.Style.NumberFormat.Format = format;
         }
 
         void PopulateHeader(Pos pos, INode template)
         {
             var title = GetTitle(template);
             bool is_horiz = GetIsHorizontal(template);
-            TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, title);
+            //TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, title);
             pos.row++;
             foreach (var field in GetFields(template))
             {
                 if (!GetObjects(field, "excel:template").Any())
                 {
                     string cell_title = FieldTitles(field).First();
-                    TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, cell_title);
+                    //TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, cell_title);
                     var comments = GetObjects(field, u("excel:comment"));
                     if (comments.Any())
                     {
