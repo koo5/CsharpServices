@@ -267,12 +267,11 @@ namespace LodgeiT
 #if !OOXML
         private Worksheet? _sheet;
         Excel.Application _app;
-        private readonly bool _isFreshSheet = true;
 #else
         private IXLWorksheet? _sheet;
         XLWorkbook _app;
 #endif
-
+        private readonly bool _isFreshSheet = true;
         private INode _sheetsGroupTemplateUri;
         public string Alerts = "";
         public static TextWriter? Tw;
@@ -1581,12 +1580,14 @@ namespace LodgeiT
         }
         void MakeDropdown(Pos pos, string validation_string)
         {
+#if !OOXML
             Debug.WriteLine(_sheet.Name + " " + pos.Cell + " Validation.Add:" + validation_string);
             _sheet.Range[pos.Cell].Validation.Add(
                 XlDVType.xlValidateList,
                 XlDVAlertStyle.xlValidAlertInformation,
                 XlFormatConditionOperator.xlBetween,
                 validation_string);
+#endif
         }
         string GetValidationString(INode prop)
         {
@@ -1652,6 +1653,17 @@ namespace LodgeiT
                 WriteString(pos, GetLabels(value_value).First());
         }
 
+#if !OOXML
+        IXCellValue Cell(Pos pos)
+        {
+            return _sheet.Cell(pos.Cell);
+        }
+#else
+        Excel.Range Cell(Pos pos)
+		{
+			return _sheet.Range[pos.Cell];
+		}
+#endif
         void WriteDate(Pos pos, DateTime dt)
         {
             var rng = _sheet.Range[pos.Cell];
