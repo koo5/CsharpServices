@@ -364,12 +364,6 @@ namespace LodgeiT
             _sheetsGroupTemplateUri = _g.CreateUriNode(sheetsTemplateUri);
         }
 
-        public RdfTemplate(XLWorkbook app)
-        {
-            _app = app;
-            Init();
-        }
-
 #endif
         private void Init()
         {
@@ -704,7 +698,7 @@ namespace LodgeiT
                 WriteFirstRow(sheet_type);
                 WriteData(template, doc);
 
-                _sheet.Columns.AutoFit();
+                _sheet.Columns().AdjustToContents();
             }
         }
 
@@ -1913,9 +1907,9 @@ namespace LodgeiT
         }
 #else
 
-        private Worksheet NewWorksheet(string sheet_name)
+        private  IXLWorksheet NewWorksheet(string sheet_name)
         {
-            Worksheet worksheet = _app.AddWorksheet(sheet_name);
+            IXLWorksheet worksheet = _app.AddWorksheet(sheet_name);
             return worksheet;
         }
 
