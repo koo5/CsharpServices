@@ -653,13 +653,6 @@ namespace LodgeiT
             return n.First().AsValuedNode().AsString();
         }
 #if !OOXML
-        public void LoadRequestSheets(StreamReader data)
-        {
-            /* todo. 
-            what namespace is request in? 
-            what graph?
-            */
-        }
 
         public void LoadResultSheets(StreamReader data, ResultSheetsHandling result_sheet_handling)
         {
@@ -694,6 +687,29 @@ namespace LodgeiT
                 _sheet.Columns.AutoFit();
             }
         }
+#else
+        public void LoadResultSheets(StreamReader data)
+        {
+            LoadRdf(data);
+            var sheets = GetSubjects(u("excel:is_result_sheet"), true.ToLiteral(_g));
+            foreach (var sheet_instance in sheets)
+            {
+                string sheet_name = SanitizeSheetName(((ILiteralNode)GetObject(sheet_instance, u("excel:sheet_instance_has_sheet_name"))).Value);
+                var sheet_type = GetObject(sheet_instance, "excel:sheet_instance_has_sheet_type");
+                var doc = GetObject(sheet_instance, "excel:sheet_instance_has_sheet_data");
+                var template = GetObject(sheet_type, "excel:root");
+
+                _sheet = NewWorksheet(sheet_name);
+
+                WriteFirstRow(sheet_type);
+                WriteData(template, doc);
+
+                _sheet.Columns.AutoFit();
+            }
+        }
+
+
+
 #endif
         public string SanitizeSheetName(string old)
         {
@@ -715,14 +731,14 @@ namespace LodgeiT
             }
             return safeName;
         }
-#if !OOXML
+
         public void WriteFirstRow(INode sheet_decl)
         {
             WriteString(new Pos { col = 'A', row = 1 }, "sheet type:");
             //_sheet.Range["A1"].AddComment("blablabl\nablablabla");
             WriteString(new Pos { col = 'B', row = 1 }, sheet_decl.ToString());
         }
-#endif
+
         public bool ExtractRecordByTemplate(INode template, ref INode individual)
         {
             C c = push("extract table at '{0}'", GetPos(template).ToString());
@@ -1510,7 +1526,7 @@ namespace LodgeiT
             return true;
         }
 
-#if !OOXML
+//#if !OOXML
         void WriteData(INode template, INode doc)
         {
             var pos = GetPos(template);
@@ -1702,7 +1718,10 @@ namespace LodgeiT
 
             }
         }
-#endif
+
+
+//#else
+//#endif
         protected Pos GetPos(INode subject)
         {
             var uri = MaybeGetObject(subject, u("excel:position"));
@@ -1892,6 +1911,14 @@ namespace LodgeiT
 
             return prefix;
         }
+#else
+
+        private Worksheet NewWorksheet(string sheet_name)
+        {
+            Worksheet worksheet = _app.AddWorksheet(sheet_name);
+            return worksheet;
+        }
+
 #endif
 
         private bool GetIsHorizontal(INode template)
