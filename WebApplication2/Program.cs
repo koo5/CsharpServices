@@ -43,7 +43,7 @@ app.MapGet("/health", () => "ok")
 
 
 //app.MapPost("/xlsx_to_rdf", ([FromBody] string root, [FromBody] string input_fn, [FromBody] string output_fn) =>
-app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
+app.MapPost("/xlsx_to_rdf", ([FromBody] xlsx_to_rdfRpcRequest rrr) =>
     {
         app.Logger.LogInformation("INFO!");
         //LoadOptions.DefaultGraphicEngine = new ClosedXML.Graphics.DefaultGraphicEngine("Noto Serif");
@@ -88,15 +88,15 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] RpcRequest rrr) =>
 
 
 
-app.MapPost("/rdf_to_xlsx", ([FromBody] RpcRequest rrr) =>
+app.MapPost("/rdf_to_xlsx", ([FromBody] rdf_to_xlsxRpcRequest rrr) =>
     {
         app.Logger.LogDebug("test DEBUG from rdf_to_xlsx");
         app.Logger.LogInformation("test INFO from rdf_to_xlsx");
         app.Logger.LogWarning("test WARNING from rdf_to_xlsx");
 
-        var w = new XLWorkbook("result.xlsx");
+        var w = new XLWorkbook(rrr.output_directory + "/result.xlsx");
         RdfTemplate t = new RdfTemplate(w);
-        t.LoadResultSheets(new StreamReader(File.OpenRead(rrr.input_fn)));
+        t.LoadResultSheets(new StreamReader(File.OpenRead(rrr.input_file)));
         return new RpcReply ("ok", null);
 
     })
@@ -111,12 +111,9 @@ app.Run("http://0.0.0.0:17789");
 
 
 
-internal record RpcRequest(string root, string input_fn, string output_fn)
-{
-}
-internal record RpcReply(string? result, string? error)
-{
-}
+internal record xlsx_to_rdfRpcRequest(string root, string input_fn, string output_fn){}
+internal record rdf_to_xlsxRpcRequest(string input_file, string output_directory){}
+internal record RpcReply(string? result, string? error){}
 
 
 
