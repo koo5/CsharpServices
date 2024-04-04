@@ -97,7 +97,7 @@ app.MapPost("/rdf_to_xlsx", ([FromBody] rdf_to_xlsxRpcRequest rrr) =>
         var w = new XLWorkbook();
         RdfTemplate t = new RdfTemplate(w);
         t.LoadResultSheets(new StreamReader(File.OpenRead(rrr.input_file)));
-        w.SaveAs(rrr.output_directory + "/output.xlsx");
+        w.SaveAs(rrr.output_directory + "/result.xlsx");
         
         return new RpcReply ("ok", null);
 
