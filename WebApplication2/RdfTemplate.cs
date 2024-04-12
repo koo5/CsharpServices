@@ -1705,14 +1705,14 @@ namespace LodgeiT
         {
             var title = GetTitle(template);
             bool is_horiz = GetIsHorizontal(template);
-            //TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, title);
+            AddBoldValueBorder(pos, title);
             pos.row++;
             foreach (var field in GetFields(template))
             {
                 if (!GetObjects(field, "excel:template").Any())
                 {
                     string cell_title = FieldTitles(field).First();
-                    //TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, cell_title);
+                    AddBoldValueBorder(pos, cell_title);
                     var comments = GetObjects(field, u("excel:comment"));
                     if (comments.Any())
                     {
@@ -1729,7 +1729,15 @@ namespace LodgeiT
             }
         }
 
-
+		void AddBoldValueBorder(Pos pos, string title)
+		{
+			WriteString(pos, title);
+			_sheet.Cell(pos.Cell).Style
+				.Border.SetTopBorder(XLBorderStyleValues.Medium)
+				.Border.SetRightBorder(XLBorderStyleValues.Medium)
+				.Border.SetBottomBorder(XLBorderStyleValues.Medium)
+				.Border.SetLeftBorder(XLBorderStyleValues.Medium);
+		}
 //#else
 //#endif
         protected Pos GetPos(INode subject)
