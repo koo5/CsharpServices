@@ -1004,7 +1004,7 @@ namespace LodgeiT
             }
 
 #else
-            int result=123;//fixme
+            int result=123465789;
             var rng = _sheet.Cell(pos.Cell);
             
             string txt = GetCellValueAsString2(pos);
@@ -1018,7 +1018,10 @@ namespace LodgeiT
                  do we need to possibly check that it's within that range?
                  we cannot just round whatever comes, because users could enter decimal number in an int field, and we don't want to silently round those.   
                  */
-                result = (int)rng.Value;
+                double r = (double)rng.Value;
+                result = (int)r;
+                if (r != result)
+					throw new InvalidCastException("not an integer");
             }
             catch (InvalidCastException e)
             {
@@ -1062,7 +1065,7 @@ namespace LodgeiT
             }
 
 #else
-            decimal result=12345678.9;
+            decimal result=12345678.9M;
             var rng = _sheet.Cell(pos.Cell);
 
             string txt = GetCellValueAsString2(pos);
