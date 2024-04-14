@@ -1062,7 +1062,7 @@ namespace LodgeiT
             }
 
 #else
-            decimal result=12345;//fixme
+            decimal result=12345678.9;
             var rng = _sheet.Cell(pos.Cell);
 
             string txt = GetCellValueAsString2(pos);
