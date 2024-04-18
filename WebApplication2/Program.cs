@@ -28,11 +28,11 @@ if (app.Environment.IsDevelopment())
 }
 
 
-app.Logger.LogError("ERROR!");
-app.Logger.LogWarning("WARN!");
-app.Logger.LogInformation("INFO!");
-app.Logger.LogDebug("DEBUG!");
-app.Logger.LogTrace("TRACE!");
+app.Logger.LogError(		"test error from Program.cs");
+app.Logger.LogWarning(		"test warn from Program.cs");
+app.Logger.LogInformation(	"test info from Program.cs");
+app.Logger.LogDebug(		"test debug from Program.cs");
+app.Logger.LogTrace(		"test trace from Program.cs");
 
 RdfTemplate.Tw = Console.Out;
 
@@ -45,7 +45,7 @@ app.MapGet("/health", () => "ok")
 //app.MapPost("/xlsx_to_rdf", ([FromBody] string root, [FromBody] string input_fn, [FromBody] string output_fn) =>
 app.MapPost("/xlsx_to_rdf", ([FromBody] xlsx_to_rdfRpcRequest rrr) =>
     {
-        app.Logger.LogInformation("INFO!");
+        app.Logger.LogInformation("xlsx_to_rdf:");
         //LoadOptions.DefaultGraphicEngine = new ClosedXML.Graphics.DefaultGraphicEngine("Noto Serif");
         
         var openSettings = new OpenSettings()
@@ -61,8 +61,7 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] xlsx_to_rdfRpcRequest rrr) =>
         using (var doc = SpreadsheetDocument.Open(rrr.input_fn+"-fixup.xlsx", true, openSettings))
         {
             doc.Save();
-        }
-        
+        }       
        
         var w = new XLWorkbook(rrr.input_fn+"-fixup.xlsx");
 		
@@ -90,9 +89,7 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] xlsx_to_rdfRpcRequest rrr) =>
 
 app.MapPost("/rdf_to_xlsx", ([FromBody] rdf_to_xlsxRpcRequest rrr) =>
     {
-        app.Logger.LogDebug("test DEBUG from rdf_to_xlsx");
-        app.Logger.LogInformation("test INFO from rdf_to_xlsx");
-        app.Logger.LogWarning("test WARNING from rdf_to_xlsx");
+        app.Logger.LogInformation("rdf_to_xlsx:");
 
         var w = new XLWorkbook();
         RdfTemplate t = new RdfTemplate(w);

@@ -130,7 +130,7 @@ namespace LodgeiT
 
         public void pop()
         {
-            RdfTemplate.Tw.WriteLine("done " + value);
+            RdfTemplate.Tw.WriteLine("..done " + value);
 
             if (this == root)
             {
