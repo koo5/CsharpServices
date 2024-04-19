@@ -89,7 +89,7 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] xlsx_to_rdfRpcRequest rrr) =>
 
 app.MapPost("/rdf_to_xlsx", ([FromBody] rdf_to_xlsxRpcRequest rrr) =>
     {
-        app.Logger.LogInformation("rdf_to_xlsx:");
+        app.Logger.LogInformation("rdf_to_xlsx: " + rrr.input_file + " -> " + rrr.output_directory);
 
         var w = new XLWorkbook();
         RdfTemplate t = new RdfTemplate(w);
