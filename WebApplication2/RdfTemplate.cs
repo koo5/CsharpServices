@@ -1891,8 +1891,8 @@ namespace LodgeiT
         }
         protected INode Bn(IGraph g, string id_base)
         {
-            //return u(":bn_" + id_base + (_freeBnId++).ToString());
-            return g.CreateBlankNode();
+            return u(":bn_" + id_base + (_freeBnId++).ToString());
+            //return g.CreateBlankNode();
         }
 #if !OOXML
         // isMulti = true:
