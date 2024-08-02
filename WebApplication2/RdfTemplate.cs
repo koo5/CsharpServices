@@ -1753,8 +1753,7 @@ namespace LodgeiT
             TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, title);
 #else
             WriteString(pos, title);
-
-            _sheet.Range[pos.Cell].Style
+            _sheet.Cell(pos.Cell).Style
 					   .Border.SetTopBorder(XLBorderStyleValues.Medium)
 					   .Border.SetRightBorder(XLBorderStyleValues.Medium)
 					   .Border.SetBottomBorder(XLBorderStyleValues.Medium)
