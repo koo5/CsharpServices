@@ -1749,13 +1749,18 @@ namespace LodgeiT
 
 	   void AddBoldValueBorder(Pos pos, string title)
 	   {
-			   WriteString(pos, title);
-			   _sheet.Cell(pos.Cell).Style
+#if !OOXML
+            TemplateGenerator.AddBoldValueBorder(_sheet, pos.Cell, title);
+#else
+            WriteString(pos, title);
+
+            _sheet.Range[pos.Cell].Style
 					   .Border.SetTopBorder(XLBorderStyleValues.Medium)
 					   .Border.SetRightBorder(XLBorderStyleValues.Medium)
 					   .Border.SetBottomBorder(XLBorderStyleValues.Medium)
 					   .Border.SetLeftBorder(XLBorderStyleValues.Medium);
-	   }
+#endif
+        }
 
 
         protected Pos GetPos(INode subject)
