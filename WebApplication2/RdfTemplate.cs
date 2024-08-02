@@ -42,8 +42,8 @@ namespace LodgeiT
 #else
         private WeakReference<C> parent;
 #endif
-        public static C? root;
-        public static C? current_context;
+        public static C root;
+        public static C current_context;
         private string value;
         private List<C> items = new List<C>();
 
@@ -233,7 +233,7 @@ namespace LodgeiT
     }
     public class RdfSheetEntry
     {
-        public Pos? _pos;
+        public Pos _pos;
         public INode _obj;
         public RdfSheetEntry(INode obj, Pos pos)
         {
@@ -265,16 +265,17 @@ namespace LodgeiT
     {
         // the sheet currently being read or populated:
 #if !OOXML
-        private Worksheet? _sheet;
+        private Worksheet _sheet;
         Excel.Application _app;
 #else
         private IXLWorksheet? _sheet;
         XLWorkbook _app;
 #endif
+
         private readonly bool _isFreshSheet = true;
         private INode _sheetsGroupTemplateUri;
         public string Alerts = "";
-        public static TextWriter? Tw;
+        public static TextWriter Tw;
         
         // This is the main graph used throughout the lifetime of RdfTemplate. It is populated either with RdfTemplates.n3, or with response.n3. response.n3 contains also the templates, because they are sent with the request. We should maybe only send the data that user fills in, but this works:
         protected Graph _g;
@@ -390,7 +391,7 @@ namespace LodgeiT
             /* BaseUri is also the graph uri, for some strange reason */
             _rg.BaseUri = uu("l:request_graph");
 #if !OOXML
-            tw = System.Console.Out;
+            Tw = System.Console.Out;
 #endif
         }
 
@@ -398,7 +399,7 @@ namespace LodgeiT
 
         private void ErrMsg(string msg)
         {
-            tw.WriteLine(msg);
+            Tw.WriteLine(msg);
             MessageBox.Show(msg, "LodgeiT", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 #else
@@ -417,19 +418,21 @@ namespace LodgeiT
 
 #if !OOXML
 
-        public List<string> AvailableSheetSets(string rdf_templates)
+        public UriLabelPairList AvailableSheetSets(string rdf_templates)
         {
             C c = push("AvailableSheetSets");
             LoadTemplates(rdf_templates);
-            List<string> result = new List<string>();
+            UriLabelPairList result = new UriLabelPairList();
             foreach (var i in GetSubjects(u("rdf:type"), u("excel:sheet_set")))
-                result.Add(i.AsValuedNode().AsString());
+            {
+                result.Add(new UriLabelPair(i.AsValuedNode().AsString(), GetLabels(i).First()));
+            }
             c.pop();
             return result;
         }
-
         public UriLabelPairList ExampleSheetSets(string rdf_templates)
         {
+            C c = push("ExampleSheetSets");
             LoadTemplates(rdf_templates);
             UriLabelPairList result = new UriLabelPairList();
             foreach (var i in GetSubjects(u("rdf:type"), u("excel:example_sheet_set")))
@@ -441,6 +444,7 @@ namespace LodgeiT
                 UriLabelPair p = new UriLabelPair(uri, label);
                 result.Add(p);
             }
+            c.pop();
             return result;
         }
 
@@ -646,12 +650,18 @@ namespace LodgeiT
             return n.First().AsValuedNode().AsString();
         }
 #if !OOXML
+        public void LoadRequestSheets(StreamReader data)
+        {
+            /* todo. 
+            what namespace is request in? 
+            what graph?
+            */
+        }
 
         public void LoadResultSheets(StreamReader data, ResultSheetsHandling result_sheet_handling)
         {
             LoadRdf(data);
             var instances = GetSubjects(u("excel:is_result_sheet"), true.ToLiteral(_g));
-            //todo: order by excel:sheet_instance_has_sheet_name
             DisplaySheets(instances, result_sheet_handling);
         }
 
@@ -775,8 +785,8 @@ namespace LodgeiT
             Assert(_g, individual, u("excel:has_sheet_name"), _sheet.Name.ToLiteral(_g));
             if (unknown_fields.Count > 0)
                 Assert(_rg, individual, u("excel:has_unknown_fields"), _rg.AssertList(unknown_fields));
-            return true;
             c.pop();
+            return true;
         }
 
         protected FieldMap GetRecordCellPositions(INode template, FieldMap map, int item_offset)
@@ -984,7 +994,7 @@ namespace LodgeiT
         {
             
 #if !OOXML
-            Excel.Range rng = _sheet.Range[pos.Cell];
+            Excel.Range rng = Cell(pos);
 
             string txt =  rng.Text;
             txt = txt.Trim();
@@ -1045,7 +1055,7 @@ namespace LodgeiT
         {
             
 #if !OOXML
-            Excel.Range rng = _sheet.Range[pos.Cell];
+            Excel.Range rng = Cell(pos);
 
             string txt =  rng.Text;
             txt = txt.Trim();
@@ -1098,7 +1108,7 @@ namespace LodgeiT
         {
 #if !OOXML
 
-			Excel.Range rng = _sheet.Range[pos.Cell];
+			Excel.Range rng = Cell(pos);
 
 			string txt =  rng.Text;
 			txt = txt.Trim();
@@ -1249,7 +1259,7 @@ namespace LodgeiT
         {
 #if !OOXML
 
-			Excel.Range rng = _sheet.Range[pos.Cell];
+			Excel.Range rng = Cell(pos);
 
 			string txt =  rng.Text;
 			txt = txt.Trim();
@@ -1465,7 +1475,7 @@ namespace LodgeiT
                 else
                 {
                     pos2.col += item;
-                    if (item > 25)//fixme
+                    if (item > 50)//fixme
                         break;
                 }
                 string sKey = GetCellValueAsString2(pos2).ToLower();
@@ -1522,7 +1532,6 @@ namespace LodgeiT
             return true;
         }
 
-//#if !OOXML
         void WriteData(INode template, INode doc)
         {
             var pos = GetPos(template);
@@ -1542,6 +1551,7 @@ namespace LodgeiT
                 numCellsToMakeDropdownsOn += PopulateRows(pos.Clone(), template, doc) + 10;
             MakeDropdowns(pos.Clone(), template, numCellsToMakeDropdownsOn);
         }
+        
         protected int PopulateRows(Pos pos, INode template, INode doc)
         {
             int rows = 0;
@@ -1554,6 +1564,7 @@ namespace LodgeiT
             }
             return rows;
         }
+        
         void MakeDropdowns(Pos pos, INode template, int numCellsToMakeDropdownsOn)
         {
             foreach (var field in GetFields(template))
@@ -1568,6 +1579,7 @@ namespace LodgeiT
                     pos.col++;
             }
         }
+        
         void MakeDropdownsForField(Pos pos, INode field, INode template, int numCellsToMakeDropdownsOn)
         {
             var prop = GetPropertyUri(field);
@@ -1581,17 +1593,20 @@ namespace LodgeiT
                     pos.row++;
             }
         }
+        
         void MakeDropdown(Pos pos, string validation_string)
         {
-#if !OOXML
             Debug.WriteLine(_sheet.Name + " " + pos.Cell + " Validation.Add:" + validation_string);
-            _sheet.Range[pos.Cell].Validation.Add(
+#if !OOXML
+            
+            Cell(pos).Validation.Add(
                 XlDVType.xlValidateList,
                 XlDVAlertStyle.xlValidAlertInformation,
                 XlFormatConditionOperator.xlBetween,
                 validation_string);
 #endif
         }
+        
         string GetValidationString(INode prop)
         {
             var range = GetRange(prop);
@@ -1680,7 +1695,7 @@ namespace LodgeiT
 #if !OOXML
             rng.NumberFormat = "0.00";
 #else
-			rng.Style.NumberFormat.Format = "0.00";
+            rng.Style.NumberFormat.Format = "0.00";
 #endif
             rng.Value = d;
             Debug.WriteLine(_sheet.Name + " " + pos.Cell + " WriteDecimal:" + d);
@@ -1732,17 +1747,17 @@ namespace LodgeiT
             }
         }
 
-		void AddBoldValueBorder(Pos pos, string title)
-		{
-			WriteString(pos, title);
-			_sheet.Cell(pos.Cell).Style
-				.Border.SetTopBorder(XLBorderStyleValues.Medium)
-				.Border.SetRightBorder(XLBorderStyleValues.Medium)
-				.Border.SetBottomBorder(XLBorderStyleValues.Medium)
-				.Border.SetLeftBorder(XLBorderStyleValues.Medium);
-		}
-//#else
-//#endif
+	   void AddBoldValueBorder(Pos pos, string title)
+	   {
+			   WriteString(pos, title);
+			   _sheet.Cell(pos.Cell).Style
+					   .Border.SetTopBorder(XLBorderStyleValues.Medium)
+					   .Border.SetRightBorder(XLBorderStyleValues.Medium)
+					   .Border.SetBottomBorder(XLBorderStyleValues.Medium)
+					   .Border.SetLeftBorder(XLBorderStyleValues.Medium);
+	   }
+
+
         protected Pos GetPos(INode subject)
         {
             var uri = MaybeGetObject(subject, u("excel:position"));
@@ -2027,9 +2042,10 @@ namespace LodgeiT
                 /*these live-updated templates is probably the only source we should support */
                 reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(UpdatedRdfTemplates)));
             else
-#if JINDRICH_DEBUG
-                reader = new StreamReader(File.OpenRead(@"C:\Users\kokok\source\repos\LodgeITSmart\LodgeiTSmart\LodgeiTSmart\Resources\RdfTemplates.n3"));
-#else
+/*#if JINDRICH_DEBUG
+                   reader = new StreamReader(File.OpenRead(@"C:\Users\kokok\source\repos\LodgeITSmart - master2\LodgeiTSmart\LodgeiTSmart\Resources\RdfTemplates.n3"));
+                                                            
+#else*/
 #if !OOXML
                 reader = new StreamReader(new MemoryStream((byte[])Properties.Resources.ResourceManager.GetObject("RdfTemplates")));
 #else
@@ -2038,7 +2054,7 @@ namespace LodgeiT
                 reader = new StreamReader(File.OpenRead((s ?? "") + "RdfTemplates.n3"));
             }
 #endif
-#endif
+//#endif
             LoadRdf(reader);
 #if !DEBUG
             }
