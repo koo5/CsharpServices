@@ -416,7 +416,6 @@ namespace LodgeiT
         
 #endif
 
-#if !OOXML
 
         public UriLabelPairList AvailableSheetSets(string rdf_templates)
         {
@@ -448,7 +447,7 @@ namespace LodgeiT
             return result;
         }
 
-        public void CreateSheetsFromExample(string rdf_templates)
+        public void CreateSheetsFromTemplate(string rdf_templates)
         {
 #if !DEBUG
             try
@@ -474,12 +473,11 @@ namespace LodgeiT
             }
             catch (Exception e)
             {
-                ErrMsg("while CreateSheetsFromExample(" + rdf_templates + "): " + e.Message);
+                ErrMsg("while CreateSheetsFromTemplate(" + rdf_templates + "): " + e.Message);
                 throw e;
             }
 #endif
         }
-#endif
         
         
         private C push(string value)

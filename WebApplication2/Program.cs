@@ -87,9 +87,26 @@ app.MapPost("/xlsx_to_rdf", ([FromBody] xlsx_to_rdfRpcRequest rrr) =>
 
 
 
-app.MapPost("/rdf_to_xlsx", ([FromBody] rdf_to_xlsxRpcRequest rrr) =>
+app.MapPost("/template_rdf_to_xlsx", ([FromBody] template_rdf_to_xlsxRpcRequest rrr) =>
     {
-        app.Logger.LogInformation("rdf_to_xlsx: " + rrr.input_file + " -> " + rrr.output_directory);
+        app.Logger.LogInformation("template_rdf_to_xlsx: " + rrr.template_uri + " -> " + rrr.output_directory);
+
+        var w = new XLWorkbook();
+        RdfTemplate t = new RdfTemplate(w);
+        t.CreateSheetsFromTemplate(rrr.template_uri);
+        w.SaveAs(rrr.output_directory + "/template.xlsx");
+    
+        return new RpcReply ("ok", null);
+
+    })
+    .WithName("template_rdf_to_xlsx")
+    .WithOpenApi();
+
+
+
+app.MapPost("/result_sheets_rdf_to_xlsx", ([FromBody] result_sheets_rdf_to_xlsxRpcRequest rrr) =>
+    {
+        app.Logger.LogInformation("result_sheets_rdf_to_xlsx: " + rrr.input_file + " -> " + rrr.output_directory);
 
         var w = new XLWorkbook();
         RdfTemplate t = new RdfTemplate(w);
@@ -99,7 +116,7 @@ app.MapPost("/rdf_to_xlsx", ([FromBody] rdf_to_xlsxRpcRequest rrr) =>
         return new RpcReply ("ok", null);
 
     })
-    .WithName("rdf_to_xlsx")
+    .WithName("result_sheets_rdf_to_xlsx")
     .WithOpenApi();
 
 
@@ -111,7 +128,10 @@ app.Run("http://0.0.0.0:17789");
 
 
 internal record xlsx_to_rdfRpcRequest(string root, string input_fn, string output_fn){}
-internal record rdf_to_xlsxRpcRequest(string input_file, string output_directory){}
+
+internal record template_rdf_to_xlsxRpcRequest(string template_uri, string output_directory){}
+internal record result_sheets_rdf_to_xlsxRpcRequest(string input_file, string output_directory){}
+
 internal record RpcReply(string? result, string? error){}
 
 

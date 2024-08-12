@@ -87,7 +87,7 @@
 			_workbook = workbook;
 		}
 
-		public void CreateSheetsFromExample(string rdf_templates)
+		public void CreateSheetsFromTemplate(string rdf_templates)
 		{
 			LoadTemplates(rdf_templates);
 
