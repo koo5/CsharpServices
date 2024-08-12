@@ -1911,7 +1911,7 @@ namespace LodgeiT
             return u(":bn_" + id_base + (_freeBnId++).ToString());
             //return g.CreateBlankNode();
         }
-#if !OOXML
+
         // isMulti = true:
         //	create, or create with a different name, if a sheet with name sheet_name already exists
         // isMulti = false:	
@@ -1923,10 +1923,52 @@ namespace LodgeiT
                 ErrMsg("sheet with that name already exists: " + sheet_name);
                 return null;
             }
-            Worksheet worksheet = _app.Sheets.Add();
-            worksheet.Name = GetUniqueName(_app.Sheets, sheet_name);
+            Worksheet worksheet = NewWorksheet(GetUniqueName(sheet_name));
             return worksheet;
         }
+
+        private string GetUniqueName(string prefix)
+        {
+            List<string> names = new List<string>();
+            foreach (Excel.Worksheet sheet in sheets)
+                names.Add(sheet.Name.ToLower());
+            return GetUniqueName(GetSheetNames(), prefix);
+        }
+
+        private Worksheet NewWorksheet(string sheet_name, bool isMulti)
+        {
+            if (!isMulti && SheetByName(sheet_name) != null)
+            {
+                ErrMsg("sheet with that name already exists: " + sheet_name);
+                return null;
+            }
+            IXLWorksheet worksheet = NewWorksheet(GetUniqueName(sheet_name));
+            return worksheet;
+        }
+
+#if !OOXML
+        private  Worksheet NewWorksheet(string sheet_name)
+        {
+            return _app.Sheets.Add();
+        }
+
+#else
+        private  IXLWorksheet NewWorksheet(string sheet_name)
+        {
+            IXLWorksheet worksheet = _app.AddWorksheet(sheet_name);
+            return worksheet;
+        }
+#endif
+
+
+		private List<String> SheetNames()
+		{
+			List<String> names = new List<String>();
+			foreach (IXLWorksheet sheet in _app.Worksheets)
+				names.Add(sheet.Name);
+			return names;
+		}
+
         private string GetUniqueName(Excel.Sheets sheets, string prefix)
         {
             List<string> names = new List<string>();
@@ -1934,6 +1976,8 @@ namespace LodgeiT
                 names.Add(sheet.Name.ToLower());
             return GetUniqueName(names, prefix);
         }
+
+
         private string GetUniqueName(List<string> names, string prefix)
         {
             int counter = 0;
@@ -1949,15 +1993,6 @@ namespace LodgeiT
 
             return prefix;
         }
-#else
-
-        private  IXLWorksheet NewWorksheet(string sheet_name)
-        {
-            IXLWorksheet worksheet = _app.AddWorksheet(sheet_name);
-            return worksheet;
-        }
-
-#endif
 
         private bool GetIsHorizontal(INode template)
         {
