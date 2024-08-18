@@ -93,7 +93,8 @@ app.MapPost("/template_rdf_to_xlsx", ([FromBody] template_rdf_to_xlsxRpcRequest 
 
         var w = new XLWorkbook();
         RdfTemplate t = new RdfTemplate(w, new Uri(rrr.template_uri));
-        t.CreateSheetsFromTemplate("");
+        if (!t.CreateSheetsFromTemplate(""))
+            return new RpcReply(null, t.Alerts);
         w.SaveAs(rrr.output_directory + "/template.xlsx");
     
         return new RpcReply ("ok", null);

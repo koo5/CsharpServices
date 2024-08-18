@@ -447,7 +447,7 @@ namespace LodgeiT
             return result;
         }
 
-        public void CreateSheetsFromTemplate(string rdf_templates)
+        public bool CreateSheetsFromTemplate(string rdf_templates)
         {
 #if !DEBUG
             try
@@ -473,10 +473,10 @@ namespace LodgeiT
             }
             catch (Exception e)
             {
-                ErrMsg("while CreateSheetsFromTemplate(" + rdf_templates + "): " + e.Message);
-                throw e;
+                return FailReturn(e);
             }
 #endif
+            return true;
         }
         
         
@@ -617,19 +617,20 @@ namespace LodgeiT
             }
             catch (RdfTemplateError e)
             {
-                FailReturn(e);
-                return false;
+                return FailReturn(e);
             }
         }
 
-        private void FailReturn(RdfTemplateError e)
+        private bool FailReturn(RdfTemplateError e)
         {
             PopulateAlertsFromTrace(e);
+            Alerts += "\nerror:\n" + e.Message;
+            return false;
         }
 
         private void PopulateAlertsFromTrace(RdfTemplateError e)
         {
-            Alerts = "during:\n" + C.root.PrettyString() + "\nerror:\n" + e.Message;
+            Alerts = "during:\n" + C.root.PrettyString();
         }
         
         private bool GetMultipleSheetsAllowed(INode sheet_decl)
