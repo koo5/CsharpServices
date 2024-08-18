@@ -466,7 +466,7 @@ namespace LodgeiT
                 {
                     WriteFirstRow(sheet_decl);
                     WriteData(template, doc);
-                    _sheet.Columns.AutoFit();
+                    //_sheet.Columns().AutoFit();
                 }
             }
 #if !DEBUG
@@ -1960,10 +1960,7 @@ namespace LodgeiT
         }
         private string GetUniqueName(string prefix)
         {
-            List<string> names = new List<string>();
-            foreach (IXLWorksheet sheet in sheets)
-                names.Add(sheet.Name.ToLower());
-            return GetUniqueName(GetSheetNames(), prefix);
+            return GetUniqueName(SheetNames(), prefix);
         }
         private  IXLWorksheet NewWorksheet(string sheet_name)
         {
@@ -2124,7 +2121,6 @@ namespace LodgeiT
 
 #endif
 
-#endif
         protected IEnumerable<string> GetLabels(INode node)
         {
             var labels = new List<string>();
