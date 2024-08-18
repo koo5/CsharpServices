@@ -105,6 +105,7 @@ namespace LodgeiT
 
         public void log(string v)
         {
+            Console.WriteLine(v);
             Debug.Assert(C.root != null);
             Debug.Assert(C.current_context != null);
             items.Add(new C(v));
@@ -484,7 +485,7 @@ namespace LodgeiT
         
         private C push(string value)
         {
-            Tw.WriteLine(value + "...");
+            Tw.WriteLine(value + " ...");
             C c = new C(value);
             C.current_context = c;
             return c;
@@ -2055,12 +2056,15 @@ namespace LodgeiT
 #endif
         protected void LoadRdf(StreamReader data)
         {
+            C c = push("LoadRdf");
 #if !DEBUG
             try
             {
 #endif
             var parser = new Notation3Parser();
             parser.Load(_g, data);
+            c.log("Loaded " + _g.Triples.Count + " triples");
+            
 #if !DEBUG
             }
             catch (Exception ex)
@@ -2068,6 +2072,7 @@ namespace LodgeiT
                 ErrMsg("Error: " + ex.Message);
                 throw;
             }
+            c.pop();
 #endif
         }
         protected void LoadTemplates(string UpdatedRdfTemplates)
