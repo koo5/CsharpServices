@@ -449,6 +449,7 @@ namespace LodgeiT
 
         public bool CreateSheetsFromTemplate(string rdf_templates)
         {
+            C c = push("CreateSheetsFromTemplate");
 #if !DEBUG
             try
             {
@@ -476,6 +477,7 @@ namespace LodgeiT
                 return FailReturn(e);
             }
 #endif
+            c.pop();
             return true;
         }
         
@@ -1815,7 +1817,10 @@ namespace LodgeiT
         }
         protected IEnumerable<INode> GetListItems(INode subject, INode predicate)
         {
-            return _g.GetListItems(One(GetObjects(subject, predicate)));
+            C c = push("GetListItems {0} {1}", subject, predicate);
+            var r = _g.GetListItems(One(GetObjects(subject, predicate)));
+            c.pop();
+            return r;
         }
 
         protected IEnumerable<INode> GetSubjects(INode predicate, INode obj)
@@ -2067,7 +2072,9 @@ namespace LodgeiT
         }
         protected void LoadTemplates(string UpdatedRdfTemplates)
         {
+
             C c = push("LoadTemplates");
+            c.log("test");
 
 #if !DEBUG
             try
@@ -2075,9 +2082,13 @@ namespace LodgeiT
 #endif
             StreamReader reader;
             if (UpdatedRdfTemplates != null && UpdatedRdfTemplates != "")
+            {
                 /*these live-updated templates is probably the only source we should support */
+                c.log("Using live-updated templates");
                 reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(UpdatedRdfTemplates)));
+            }
             else
+            {
 /*#if JINDRICH_DEBUG
                    reader = new StreamReader(File.OpenRead(@"C:\Users\kokok\source\repos\LodgeITSmart - master2\LodgeiTSmart\LodgeiTSmart\Resources\RdfTemplates.n3"));
                                                             
@@ -2085,12 +2096,12 @@ namespace LodgeiT
 #if !OOXML
                 reader = new StreamReader(new MemoryStream((byte[])Properties.Resources.ResourceManager.GetObject("RdfTemplates")));
 #else
-            {
+
                 string? s = Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR");
                 reader = new StreamReader(File.OpenRead((s ?? "") + "RdfTemplates.n3"));
-            }
+                c.log("Using templates from " + (s ?? "") + "RdfTemplates.n3");
 #endif
-//#endif
+            }
             LoadRdf(reader);
 #if !DEBUG
             }
