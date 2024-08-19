@@ -457,18 +457,34 @@ namespace LodgeiT
 #endif
             LoadTemplates(rdf_templates);
 
-            foreach (INode example_sheet_info in GetListItems((_sheetsGroupTemplateUri), "excel:has_sheet_instances"))
+            if (MaybeGetObject(_sheetsGroupTemplateUri, u("excel:has_sheet_instances")) == null)
             {
-                INode sheet_decl = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_type");
-                string sheet_name = GetSheetNamePrefix(sheet_decl);
-                var template = GetObject(sheet_decl, "excel:root");
-                var doc = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_data");
-                _sheet = NewWorksheet(sheet_name, GetMultipleSheetsAllowed(sheet_decl));
-                if (_sheet != null)
+                foreach (INode sheet_type in GetListItems(_sheetsGroupTemplateUri, "excel:sheets"))
                 {
-                    WriteFirstRow(sheet_decl);
-                    WriteData(template, doc);
-                    //_sheet.Columns().AutoFit();
+                    string name = SheetNameFromSheetTypeRoot(sheet_type);
+                    _sheet = NewWorksheet(name, false);
+                    var template = GetObject(sheet_type, "excel:root");
+                    WriteFirstRow(sheet_type);
+                    WriteData(template, null);
+                    AuoFit();
+
+                }
+            }
+            else
+            {
+                foreach (INode example_sheet_info in GetListItems(_sheetsGroupTemplateUri, "excel:has_sheet_instances"))
+                {
+                    INode sheet_decl = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_type");
+                    string sheet_name = GetSheetNamePrefix(sheet_decl);
+                    var template = GetObject(sheet_decl, "excel:root");
+                    var doc = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_data");
+                    _sheet = NewWorksheet(sheet_name, GetMultipleSheetsAllowed(sheet_decl));
+                    if (_sheet != null)
+                    {
+                        WriteFirstRow(sheet_decl);
+                        WriteData(template, doc);
+                        AuoFit();
+                    }
                 }
             }
 #if !DEBUG
@@ -482,6 +498,17 @@ namespace LodgeiT
             return true;
         }
         
+        
+        private void AuoFit()
+#if !OOXML
+        {
+            _sheet.Columns.AutoFit();
+        }
+#else
+        {
+            _sheet.Columns().AdjustToContents();
+        }
+#endif
         
         private C push(string value)
         {
@@ -636,7 +663,7 @@ namespace LodgeiT
             Alerts = "during:\n" + C.root.PrettyString();
         }
         
-        private bool GetMultipleSheetsAllowed(INode sheet_decl)
+        private bool GetMultipleSheetsAllowed(INode sheet_decl) 
         {
             return BoolObjectWithDefault(sheet_decl, u("excel:multiple_sheets_allowed"), false);
         }
@@ -644,12 +671,15 @@ namespace LodgeiT
         private string GetSheetNamePrefix(INode sheet)
         {
             var n = GetObjects(sheet, "excel:name_prefix");
-            if (!n.Any())
-            {
-                IUriNode r = (IUriNode)GetObject(sheet, "excel:root");
-                return UriFragment(r);
-            }
-            return n.First().AsValuedNode().AsString();
+            if (n.Any())
+                return n.First().AsValuedNode().AsString();
+            return SheetNameFromSheetTypeRoot(sheet);
+        }
+
+        string SheetNameFromSheetTypeRoot(INode sheet)
+        {
+            IUriNode r = (IUriNode)GetObject(sheet, "excel:root");
+            return UriFragment(r);
         }
 #if !OOXML
         public void LoadRequestSheets(StreamReader data)
@@ -709,7 +739,7 @@ namespace LodgeiT
                 WriteFirstRow(sheet_type);
                 WriteData(template, doc);
 
-                _sheet.Columns().AdjustToContents();
+                AuoFit();
             }
         }
 
