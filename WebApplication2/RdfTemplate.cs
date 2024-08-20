@@ -459,6 +459,7 @@ namespace LodgeiT
 
             if (MaybeGetObject(_sheetsGroupTemplateUri, u("excel:has_sheet_instances")) == null)
             {
+                C c1 = push("create sheets from template {0}", _sheetsGroupTemplateUri);
                 foreach (INode sheet_type in GetListItems(_sheetsGroupTemplateUri, "excel:sheets"))
                 {
                     C c2 = push("create sheet {0}", sheet_type);
@@ -470,9 +471,11 @@ namespace LodgeiT
                     AuoFit();
                     c2.pop();
                 }
+                c1.pop();
             }
             else
             {
+                C c1 = push("create sheets from example {0}", _sheetsGroupTemplateUri);
                 foreach (INode example_sheet_info in GetListItems(_sheetsGroupTemplateUri, "excel:has_sheet_instances"))
                 {
                     INode sheet_decl = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_type");
@@ -487,6 +490,7 @@ namespace LodgeiT
                         AuoFit();
                     }
                 }
+                c1.pop();
             }
 #if !DEBUG
             }
@@ -1835,7 +1839,7 @@ namespace LodgeiT
         //     We have two types of arrangements of data in sheets: For single entity, for example bank details, we use a vertical header, and for multiple entities, for example bank statement, a horizontal header
         protected bool IsMulti(INode template)
         {
-            C c = push("IsMulti {0}, template);
+            C c = push("IsMulti {0}", template);
             return GetObject(template, "excel:cardinality").Equals(u("excel:multi"));
             c.pop();
         }
