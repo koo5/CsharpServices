@@ -461,13 +461,14 @@ namespace LodgeiT
             {
                 foreach (INode sheet_type in GetListItems(_sheetsGroupTemplateUri, "excel:sheets"))
                 {
+                    C c2 = push("create sheet {0}", sheet_type);
                     string name = SheetNameFromSheetTypeRoot(sheet_type);
                     _sheet = NewWorksheet(name, false);
                     var template = GetObject(sheet_type, "excel:root");
                     WriteFirstRow(sheet_type);
                     WriteData(template, null);
                     AuoFit();
-
+                    c2.pop();
                 }
             }
             else
@@ -1566,6 +1567,7 @@ namespace LodgeiT
 
         void WriteData(INode template, INode doc)
         {
+            C c = push("WriteData {0}, {1}", template, doc);
             var pos = GetPos(template);
             if (_isFreshSheet)
                 PopulateHeader(pos.Clone(), template);
@@ -1582,6 +1584,7 @@ namespace LodgeiT
             else if (doc != null)
                 numCellsToMakeDropdownsOn += PopulateRows(pos.Clone(), template, doc) + 10;
             MakeDropdowns(pos.Clone(), template, numCellsToMakeDropdownsOn);
+            c.pop();
         }
         
         protected int PopulateRows(Pos pos, INode template, INode doc)
@@ -1832,7 +1835,9 @@ namespace LodgeiT
         //     We have two types of arrangements of data in sheets: For single entity, for example bank details, we use a vertical header, and for multiple entities, for example bank statement, a horizontal header
         protected bool IsMulti(INode template)
         {
+            C c = push("IsMulti {0}, template);
             return GetObject(template, "excel:cardinality").Equals(u("excel:multi"));
+            c.pop();
         }
         protected INode GetClass(INode template)
         {
