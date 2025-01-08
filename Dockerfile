@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build-env
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build-env
 WORKDIR /App
 
 COPY . ./
@@ -12,6 +12,7 @@ RUN dotnet publish -c Debug -o out
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:7.0
 
+RUN mkdir /tmp; chmod 1777 /tmp
 RUN apt update; apt install -y curl fonts-noto-core
 
 
@@ -28,6 +29,7 @@ USER myuser
 VOLUME /App/RdfTemplates.n3
 VOLUME /home/myuser/.dotnet
 
+ENV COMPlus_EnableDiagnostics=0
 
 ENTRYPOINT ["dotnet", "CsharpServices.dll"]
 ENV HC="curl -L -S --fail http://127.0.0.1:17789/health" 
