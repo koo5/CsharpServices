@@ -1,3 +1,5 @@
+/* this was a probe into porting rdftemplates into typescript. feel free to delete. */
+
 'use strict';
 
 
@@ -87,7 +89,7 @@
 			_workbook = workbook;
 		}
 
-		public void CreateSheetsFromExample(string rdf_templates)
+		public void CreateSheetsFromTemplate(string rdf_templates)
 		{
 			LoadTemplates(rdf_templates);
 

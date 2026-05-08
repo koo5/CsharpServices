@@ -1,1 +1,4 @@
 dotnet test -parallel none --nologo  --logger "console;verbosity=detailed"  --blame-hang-timeout 100s
+
+http://localhost:8877/view/template?template_uri=https://rdf.lodgeit.net.au/v1/calcs/ic/ui#investment_calculator_sheets
+

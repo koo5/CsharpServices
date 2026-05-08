@@ -105,6 +105,7 @@ namespace LodgeiT
 
         public void log(string v)
         {
+            Console.WriteLine(v);
             Debug.Assert(C.root != null);
             Debug.Assert(C.current_context != null);
             items.Add(new C(v));
@@ -416,7 +417,6 @@ namespace LodgeiT
         
 #endif
 
-#if !OOXML
 
         public UriLabelPairList AvailableSheetSets(string rdf_templates)
         {
@@ -448,43 +448,76 @@ namespace LodgeiT
             return result;
         }
 
-        public void CreateSheetsFromExample(string rdf_templates)
+        public bool CreateSheetsFromTemplate(string rdf_templates)
         {
+            C c = push("CreateSheetsFromTemplate");
 #if !DEBUG
             try
             {
 #endif
             LoadTemplates(rdf_templates);
 
-            foreach (INode example_sheet_info in GetListItems((_sheetsGroupTemplateUri), "excel:has_sheet_instances"))
+            if (MaybeGetObject(_sheetsGroupTemplateUri, u("excel:has_sheet_instances")) == null)
             {
-                INode sheet_decl = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_type");
-                string sheet_name = GetSheetNamePrefix(sheet_decl);
-                var template = GetObject(sheet_decl, "excel:root");
-                var doc = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_data");
-                _sheet = NewWorksheet(sheet_name, GetMultipleSheetsAllowed(sheet_decl));
-                if (_sheet != null)
+                C c1 = push("create sheets from template {0}", _sheetsGroupTemplateUri);
+                foreach (INode sheet_type in GetListItems(_sheetsGroupTemplateUri, "excel:sheets"))
                 {
-                    WriteFirstRow(sheet_decl);
-                    WriteData(template, doc);
-                    _sheet.Columns.AutoFit();
+                    C c2 = push("create sheet {0}", sheet_type);
+                    string name = SheetNameFromSheetTypeRoot(sheet_type);
+                    _sheet = NewWorksheet(name, false);
+                    var template = GetObject(sheet_type, "excel:root");
+                    WriteFirstRow(sheet_type);
+                    WriteData(template, null);
+                    AuoFit();
+                    c2.pop();
                 }
+                c1.pop();
+            }
+            else
+            {
+                C c1 = push("create sheets from example {0}", _sheetsGroupTemplateUri);
+                foreach (INode example_sheet_info in GetListItems(_sheetsGroupTemplateUri, "excel:has_sheet_instances"))
+                {
+                    INode sheet_decl = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_type");
+                    string sheet_name = GetSheetNamePrefix(sheet_decl);
+                    var template = GetObject(sheet_decl, "excel:root");
+                    var doc = GetObject(example_sheet_info, "excel:sheet_instance_has_sheet_data");
+                    _sheet = NewWorksheet(sheet_name, GetMultipleSheetsAllowed(sheet_decl));
+                    if (_sheet != null)
+                    {
+                        WriteFirstRow(sheet_decl);
+                        WriteData(template, doc);
+                        AuoFit();
+                    }
+                }
+                c1.pop();
             }
 #if !DEBUG
             }
             catch (Exception e)
             {
-                ErrMsg("while CreateSheetsFromExample(" + rdf_templates + "): " + e.Message);
-                throw e;
+                return FailReturn(e);
             }
 #endif
+            c.pop();
+            return true;
+        }
+        
+        
+        private void AuoFit()
+#if !OOXML
+        {
+            _sheet.Columns.AutoFit();
+        }
+#else
+        {
+            _sheet.Columns().AdjustToContents();
         }
 #endif
         
-        
         private C push(string value)
         {
-            Tw.WriteLine(value + "...");
+            Tw.WriteLine(value + " ...");
             C c = new C(value);
             C.current_context = c;
             return c;
@@ -619,22 +652,33 @@ namespace LodgeiT
             }
             catch (RdfTemplateError e)
             {
-                FailReturn(e);
-                return false;
+                return FailReturn(e);
             }
         }
 
-        private void FailReturn(RdfTemplateError e)
+        private bool FailReturn(RdfTemplateError e)
         {
             PopulateAlertsFromTrace(e);
+            Alerts += "\nerror:\n" + e.Message;
+            return false;
+        }
+
+        // Overload for the broader catch in CreateSheetsFromTemplate (line ~499).
+        // PopulateAlertsFromTrace ignores its argument anyway, so the wider type
+        // works without losing information; we inline the alert build.
+        private bool FailReturn(Exception e)
+        {
+            Alerts = "during:\n" + C.root.PrettyString();
+            Alerts += "\nerror:\n" + e.Message;
+            return false;
         }
 
         private void PopulateAlertsFromTrace(RdfTemplateError e)
         {
-            Alerts = "during:\n" + C.root.PrettyString() + "\nerror:\n" + e.Message;
+            Alerts = "during:\n" + C.root.PrettyString();
         }
         
-        private bool GetMultipleSheetsAllowed(INode sheet_decl)
+        private bool GetMultipleSheetsAllowed(INode sheet_decl) 
         {
             return BoolObjectWithDefault(sheet_decl, u("excel:multiple_sheets_allowed"), false);
         }
@@ -642,12 +686,15 @@ namespace LodgeiT
         private string GetSheetNamePrefix(INode sheet)
         {
             var n = GetObjects(sheet, "excel:name_prefix");
-            if (!n.Any())
-            {
-                IUriNode r = (IUriNode)GetObject(sheet, "excel:root");
-                return UriFragment(r);
-            }
-            return n.First().AsValuedNode().AsString();
+            if (n.Any())
+                return n.First().AsValuedNode().AsString();
+            return SheetNameFromSheetTypeRoot(sheet);
+        }
+
+        string SheetNameFromSheetTypeRoot(INode sheet)
+        {
+            IUriNode r = (IUriNode)GetObject(sheet, "excel:root");
+            return UriFragment(r);
         }
 #if !OOXML
         public void LoadRequestSheets(StreamReader data)
@@ -707,7 +754,7 @@ namespace LodgeiT
                 WriteFirstRow(sheet_type);
                 WriteData(template, doc);
 
-                _sheet.Columns().AdjustToContents();
+                AuoFit();
             }
         }
 
@@ -1534,6 +1581,7 @@ namespace LodgeiT
 
         void WriteData(INode template, INode doc)
         {
+            C c = push("WriteData {0}, {1}", template, doc);
             var pos = GetPos(template);
             if (_isFreshSheet)
                 PopulateHeader(pos.Clone(), template);
@@ -1550,6 +1598,7 @@ namespace LodgeiT
             else if (doc != null)
                 numCellsToMakeDropdownsOn += PopulateRows(pos.Clone(), template, doc) + 10;
             MakeDropdowns(pos.Clone(), template, numCellsToMakeDropdownsOn);
+            c.pop();
         }
         
         protected int PopulateRows(Pos pos, INode template, INode doc)
@@ -1800,7 +1849,9 @@ namespace LodgeiT
         //     We have two types of arrangements of data in sheets: For single entity, for example bank details, we use a vertical header, and for multiple entities, for example bank statement, a horizontal header
         protected bool IsMulti(INode template)
         {
+            C c = push("IsMulti {0}", template);
             return GetObject(template, "excel:cardinality").Equals(u("excel:multi"));
+            c.pop();
         }
         protected INode GetClass(INode template)
         {
@@ -1816,7 +1867,10 @@ namespace LodgeiT
         }
         protected IEnumerable<INode> GetListItems(INode subject, INode predicate)
         {
-            return _g.GetListItems(One(GetObjects(subject, predicate)));
+            C c = push("GetListItems {0} {1}", subject, predicate);
+            var r = _g.GetListItems(One(GetObjects(subject, predicate)));
+            c.pop();
+            return r;
         }
 
         protected IEnumerable<INode> GetSubjects(INode predicate, INode obj)
@@ -1913,22 +1967,29 @@ namespace LodgeiT
             return u(":bn_" + id_base + (_freeBnId++).ToString());
             //return g.CreateBlankNode();
         }
-#if !OOXML
+
         // isMulti = true:
         //	create, or create with a different name, if a sheet with name sheet_name already exists
         // isMulti = false:	
         //  create sheet with name sheet_name, or fail
-        private Worksheet NewWorksheet(string sheet_name, bool isMulti)
+#if !OOXML
+        private Excel.Worksheet NewWorksheet(string sheet_name, bool isMulti)
         {
             if (!isMulti && SheetByName(sheet_name) != null)
             {
                 ErrMsg("sheet with that name already exists: " + sheet_name);
                 return null;
             }
-            Worksheet worksheet = _app.Sheets.Add();
-            worksheet.Name = GetUniqueName(_app.Sheets, sheet_name);
-            return worksheet;
+            return NewWorksheet(GetUniqueName(sheet_name));
         }
+        private string GetUniqueName(string prefix)
+        {
+            List<string> names = new List<string>();
+            foreach (Excel.Worksheet sheet in sheets)
+                names.Add(sheet.Name.ToLower());
+            return GetUniqueName(GetSheetNames(), prefix);
+        }
+
         private string GetUniqueName(Excel.Sheets sheets, string prefix)
         {
             List<string> names = new List<string>();
@@ -1936,6 +1997,41 @@ namespace LodgeiT
                 names.Add(sheet.Name.ToLower());
             return GetUniqueName(names, prefix);
         }
+
+
+        private Excel.Worksheet NewWorksheet(string sheet_name)
+        {
+            return _app.Sheets.Add();
+        }
+
+#else
+        private IXLWorksheet NewWorksheet(string sheet_name, bool isMulti)
+        {
+            if (!isMulti && SheetByName(sheet_name) != null)
+            {
+                ErrMsg("sheet with that name already exists: " + sheet_name);
+                return null;
+            }
+            return NewWorksheet(GetUniqueName(sheet_name));
+        }
+        private string GetUniqueName(string prefix)
+        {
+            return GetUniqueName(SheetNames(), prefix);
+        }
+        private  IXLWorksheet NewWorksheet(string sheet_name)
+        {
+            IXLWorksheet worksheet = _app.AddWorksheet(sheet_name);
+            return worksheet;
+        }
+		private List<String> SheetNames()
+		{
+			List<String> names = new List<String>();
+			foreach (IXLWorksheet sheet in _app.Worksheets)
+				names.Add(sheet.Name);
+			return names;
+		}
+#endif
+
         private string GetUniqueName(List<string> names, string prefix)
         {
             int counter = 0;
@@ -1951,15 +2047,6 @@ namespace LodgeiT
 
             return prefix;
         }
-#else
-
-        private  IXLWorksheet NewWorksheet(string sheet_name)
-        {
-            IXLWorksheet worksheet = _app.AddWorksheet(sheet_name);
-            return worksheet;
-        }
-
-#endif
 
         private bool GetIsHorizontal(INode template)
         {
@@ -2018,12 +2105,15 @@ namespace LodgeiT
 #endif
         protected void LoadRdf(StreamReader data)
         {
+            C c = push("LoadRdf");
 #if !DEBUG
             try
             {
 #endif
             var parser = new Notation3Parser();
             parser.Load(_g, data);
+            c.log("Loaded " + _g.Triples.Count + " triples");
+            
 #if !DEBUG
             }
             catch (Exception ex)
@@ -2031,11 +2121,14 @@ namespace LodgeiT
                 ErrMsg("Error: " + ex.Message);
                 throw;
             }
+            c.pop();
 #endif
         }
         protected void LoadTemplates(string UpdatedRdfTemplates)
         {
+
             C c = push("LoadTemplates");
+            c.log("test");
 
 #if !DEBUG
             try
@@ -2043,9 +2136,13 @@ namespace LodgeiT
 #endif
             StreamReader reader;
             if (UpdatedRdfTemplates != null && UpdatedRdfTemplates != "")
+            {
                 /*these live-updated templates is probably the only source we should support */
+                c.log("Using live-updated templates");
                 reader = new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(UpdatedRdfTemplates)));
+            }
             else
+            {
 /*#if JINDRICH_DEBUG
                    reader = new StreamReader(File.OpenRead(@"C:\Users\kokok\source\repos\LodgeITSmart - master2\LodgeiTSmart\LodgeiTSmart\Resources\RdfTemplates.n3"));
                                                             
@@ -2053,12 +2150,12 @@ namespace LodgeiT
 #if !OOXML
                 reader = new StreamReader(new MemoryStream((byte[])Properties.Resources.ResourceManager.GetObject("RdfTemplates")));
 #else
-            {
+
                 string? s = Environment.GetEnvironmentVariable("CSHARPSERVICES_DATADIR");
                 reader = new StreamReader(File.OpenRead((s ?? "") + "RdfTemplates.n3"));
-            }
+                c.log("Using templates from " + (s ?? "") + "RdfTemplates.n3");
 #endif
-//#endif
+            }
             LoadRdf(reader);
 #if !DEBUG
             }
@@ -2078,8 +2175,18 @@ namespace LodgeiT
                     return sheet;
             return null;
         }
+#else
+
+        protected IXLWorksheet SheetByName(string name)
+        {
+            foreach (IXLWorksheet sheet in _app.Worksheets)
+                if (name.Trim().ToLower() == sheet.Name.Trim().ToLower())
+                    return sheet;
+            return null;
+        }
 
 #endif
+
         protected IEnumerable<string> GetLabels(INode node)
         {
             var labels = new List<string>();
