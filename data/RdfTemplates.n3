@@ -1,4 +1,11 @@
 
+# This repository's own copy of the RDF templates, so that it is self-sufficient when
+# compiled as the Excel plugin. accounts-assessor's stack doesn't read this one: there,
+# csharp-services reads accounts-assessor's sources/static/RdfTemplates.n3, bind-mounted
+# at /App/data/ (CSHARPSERVICES_DATADIR, docker_scripts/docker-stack-template.yml).
+# The two copies have drifted apart (2026-11-17: they differ from the first line on).
+# They should be unified, and in future an automated test should check that they're equal.
+
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
