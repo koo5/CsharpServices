@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0@sha256:ec47373b40fc22a31c891c5be8df83f8cbadc24e785b10899545e33a1a1c2183 AS build-env
+FROM mcr.microsoft.com/dotnet/sdk:8.0.426@sha256:738f72aff955d5c5690e06b6fc8ecd1b90ead564099a257ac528ff720b8da85f AS build-env
 WORKDIR /App
 
 COPY . ./
@@ -9,7 +9,7 @@ RUN dotnet publish -c Release -o out
 
 
 # Build runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0@sha256:8c7de8ca26baa56530cdc3d55b5563420ee2a302619ad808c53ec64613143771
+FROM mcr.microsoft.com/dotnet/aspnet:8.0.32@sha256:74a1d7c07211a7e8a2e35ff3c70ed8e4e1d6451a1ff7cf7bdf526f9eafa23023
 
 RUN mkdir /tmp; chmod 1777 /tmp
 RUN apt update; apt install -y curl fonts-noto-core
